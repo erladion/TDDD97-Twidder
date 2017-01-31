@@ -32,20 +32,48 @@ var attachHandlersHome = function(){
     changePassForm.setAttribute("onsubmit", "changePassword(this); return false;");
     logoutButton.addEventListener("click", function() {logout();});
 
+    var postButton = document.getElementById("postbutton");
+    var refreshButton = document.getElementById("refreshbutton");
+
+    postButton.addEventListener("click", function() {postMessage();});
+    refreshButton.addEventListener("click", function() {listAllMessages();});
+
+    var searchButton = document.getElementById("searchbutton");
+
+    searchButton.addEventListener("click", function() { search(document.getElementById("emailbox").value);});
+
+}
+
+function cleanErrors(){
+    var errors = document.getElementsByClassName("errormessage");
+    for (var i = 0; i < errors.length; i++){
+        errors[i].innerHTML = "";
+    }
+}
+
+function search(email){
+    var data = serverstub.getUserDataByEmail(localStorage.getItem("token"), email);
+    if (data.success)
+        changeTab("home", email);
+    else
+        document.getElementById("searcherror").innerHTML = data.message;
 }
 
 function changePassword(formData){
     if (!checkPassLength(formData.newpass.value)){
-        alert("The password is too short. It needs to be at least 8 characters.");
+        document.getElementById("changepasserror").innerHTML = "The password is too short. It needs to be at least 8 characters.";
         return;
     }
     else if (formData.newpass.value != formData.newpassag.value){
-        alert("The passwords do not match!");
+        document.getElementById("changepasserror").innerHTML = "The passwords do not match!";
         return;
     }
     var answer = serverstub.changePassword(localStorage.getItem("token"),formData.oldpass.value,formData.newpass.value);
     if(!answer.success){
-        alert(answer.message);
+        document.getElementById("changepasserror").innerHTML = answer.message;
+    }
+    else{
+        cleanErrors();
     }
 }
 
@@ -59,40 +87,44 @@ function logout(){
     changeView("welcome");
 }
 
-var changeTab = function(tabName){
+var changeTab = function(tabName, email){
+    email = email || localStorage.getItem("email");
     var tabContent = document.getElementsByClassName("tabcontent");
     for (var i = 0; i < tabContent.length; i++){
         tabContent[i].style.display = "none";
     }
     document.getElementById(tabName).style.display = "block";
-
+    localStorage.setItem("currentemail",email);
+    listAllMessages(email);
+    showUserInfo(email);
+    cleanErrors();
 }
 
 function checkLoginForm(formData){
     if (!checkPassLength(formData.loginpass.value)){
-        alert("The password is too short. It needs to be at least 8 characters.");
+        document.getElementById("loginerror").innerHTML = "The password is too short. It needs to be at least 8 characters.";
         return;
     }
     var loginAnswer = serverstub.signIn(formData.loginemail.value, formData.loginpass.value);
-        alert(loginAnswer.message);
-        alert(loginAnswer.data);
     if(!loginAnswer.success){
-        alert(loginAnswer.message);
+        document.getElementById("loginerror").innerHTML = loginAnswer.message;
     }
     else{
         localStorage.setItem("token",loginAnswer.data);
+        localStorage.setItem("email", formData.loginemail.value);
         changeView("profile");
+        changeTab("home");
         attachHandlersHome();
     }
 }
 
 var checkSignupForm = function(formData){
     if (!checkPassLength(formData.pass.value)){
-        alert("The password is too short. It needs to be at least 8 characters.");
+        document.getElementById("signuperror").innerHTML = "The password is too short. It needs to be at least 8 characters.";
         return;
     }
     else if (formData.pass.value != formData.passag.value){
-        alert("The passwords do not match!");
+        document.getElementById("signuperror").innerHTML = "The passwords do not match!";
         return;
     }
     var signupData = {
@@ -104,14 +136,61 @@ var checkSignupForm = function(formData){
         city:formData.city.value,
         country:formData.country.value
     };
-
+    alert(formData.firnam.value);
     var returnData = serverstub.signUp(signupData);
     if (!returnData.success){
-        alert(returnData.message);
+        document.getElementById("signuperror").innerHTML = returnData.message;
     }
     else{
-        alert(returnData.message);
+         var loginAnswer = serverstub.signIn(formData.email.value, formData.pass.value);
+
+        localStorage.setItem("token",loginAnswer.data);
+        localStorage.setItem("email", formData.email.value);
+        changeView("profile");
+        attachHandlersHome();
     }
+}
+
+var showUserInfo = function(email){
+    email = email || localStorage.getItem("email");
+    var info = serverstub.getUserDataByEmail(localStorage.getItem("token"), email);
+    if (info.success) {
+        var infoArea = document.getElementById("personalinfo");
+
+        infoArea.innerHTML = "First name: " + info.data.firstname + "</br>" +
+        "Family name: " + info.data.familyname + "</br>" +
+        "Gender: " + info.data.gender + "</br>" +
+        "Email: " + info.data.email + "</br>" +
+        "City: " + info.data.city + "</br>" +
+        "Country: " + info.data.country;
+    }
+    else{
+        document.getElementById("posterror").innerHTML = info.message;
+    }
+}
+
+var postMessage = function(){
+    var messageToPost = document.getElementById("posttext").value;
+    if (messageToPost == ""){
+        document.getElementById("posterror").innerHTML = "Can't post messages that are emtpy!";
+        return;
+    }
+    var email = localStorage.getItem("currentemail");
+    var post = serverstub.postMessage(localStorage.getItem("token"), messageToPost, email);
+    listAllMessages(email);
+    document.getElementById("posttext").value = "";
+    cleanErrors();
+}
+
+var listAllMessages = function(email){
+    email = email || localStorage.getItem("currentemail");
+    var messages = serverstub.getUserMessagesByEmail(localStorage.getItem("token"),email);
+    var messageArea = document.getElementById("messages");
+    messageArea.innerHTML = "";
+    for(var i = 0; i < messages.data.length; i++){
+        messageArea.innerHTML += messages.data[i].writer + "</br>" + "<div class=\"postedmessage\">" + messages.data[i].content + "</div></br>";
+    }
+    cleanErrors();
 }
 
 var checkPassLength = function(password){
@@ -119,9 +198,6 @@ var checkPassLength = function(password){
 }
 
 window.onload = function(){
- //code that is executed as the page is loaded.
- //You shall put your own custom code here.
- //window.alert() is not allowed to be used in your implementation.
     if(localStorage.getItem("token") != null){
         changeView("profile");
         attachHandlersHome();

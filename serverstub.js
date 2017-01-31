@@ -72,6 +72,14 @@ var serverstub = (function() {
       }
     },
 
+    deleteMessages: function(toEmail){
+      if (users[toEmail] != null) {
+          var recipient = users[toEmail];
+          recipient.messages = [];
+          persistUsers();
+      }
+    },
+
     getUserDataByToken: function(token){
       var email = tokenToEmail(token);
       return serverstub.getUserDataByEmail(token, email);
