@@ -1,0 +1,98 @@
+body{
+    background-color: cornflowerblue;
+}
+
+/*
+ One property field for all divs
+ and one property field for each divs
+*/
+.subdivs{
+    background-color: white;
+    border: 1px solid black;
+}
+
+ul.tab {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #ccc;
+    background-color: #f1f1f1;
+}
+
+ul.tab li {float: left;}
+
+ul.tab li a {
+    display: inline-block;
+    color: black;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+    transition: 0.3s;
+    font-size: 17px;
+}
+
+ul.tab li a:hover {background-color: #ddd;}
+
+ul.tab li a:focus, .active {background-color: #ccc;}
+
+.tabcontent {
+    display: none;
+    padding: 6px 12px;
+    border: 1px solid #ccc;
+    border-top: none;
+    height: 400px;
+}
+
+button{
+    float: right;
+    margin: 4px;
+}
+
+input{
+    display: inline-block;
+    width: 150px;
+    margin: 2px;
+}
+
+label{
+    width: 90px;
+    display: inline-block;
+    text-align: left;
+    margin: 2px;
+}
+
+#account label{
+    width: 150px;
+}
+
+#account button{
+    float:left;
+}
+
+select{
+    display: inline-block;
+    width: 150px;
+    margin: 2px;
+}
+#everything{
+    width: 600px;
+    height: 400px;
+    margin: auto;
+    margin-top: 100px;
+}
+
+#signup{
+    width: 250px;
+    float: right;
+}
+#signin{
+    width: 250px;
+    float: right;
+
+}
+#logo{
+    height: 400px;
+    width: 340px;
+    float: left;
+}

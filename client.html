@@ -1,0 +1,62 @@
+<html>
+ <head>
+     <script id="welcomeview" type="text/view">
+     <div id="everything">
+        <div class="subdivs" id="logo">
+            <img src="wimage.png">
+        </div>
+        <div class="subdivs" id="signin">
+            <form id="loginForm">
+                <label for=loginemail>Email:</label><input required id="loginemail" type="email"/></br>
+                <label for=loginpass>Password:</label><input required min=8 id="loginpass"type="password" /></br>
+                <button id="loginbutton" type=”submit”>Login</button>
+            </form>
+        </div>
+
+        <div class="subdivs" id="signup">
+            <h2>Sign up here</h2>
+            <form id="signupForm">
+                <label for="firnam">First Name</label><input required id="firnam" type="text"/></br>
+                <label for="famnam">Family Name</label><input required id="famnam" type="text"/></br>
+                <label for="gender">Gender</label><select id="gender">
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select></br>
+                <label for="city">City</label><input required id="city" type="text"/></br>
+                <label for="country">Country</label><input required id="country" type="text"/></br>
+                <label for="email">Email</label><input required id="email"type="email"/></br>
+                <label for="pass">Password</label><input required id="pass"type="password"/></br>
+                <label for="passag">Repeat PSW</label><input required id="passag"type="password"/></br>
+                <button id="signupbutton" type="submit">Sign up</button>
+            </form>
+        </div>
+    </div></script>
+     <script id="profileview" type="text/view">
+         <ul class="tab">
+            <li><a id="homeButton" href="javascript:void(0) "class="tablinks">Home</a></li>
+            <li><a id="browseButton" href="javascript:void(0) "class="tablinks">Browse</a></li>
+            <li><a id="accountButton" href="javascript:void(0) "class="tablinks">Account</a></li>
+         </ul>
+
+         <div id="home" class="tabcontent">Home</div>
+         <div id="browse" class="tabcontent">Browse</div>
+         <div id="account" class="tabcontent">
+         <form id="changePassForm">
+            <label for="oldpass">Old Password</label><input id="oldpass" type="password"/></br>
+            <label for="newpass">New Password</label><input id="newpass" type="password"/></br>
+            <label for="newpassag">New Password again</label><input id="newpassag" type="password"/></br>
+            <button id="changepassbutton" type="submit">Change password</button></br>
+            </form>
+            <button id="logoutbutton" type="submit">Sign out</button></br>
+         </div>
+
+
+     </script>
+ <link href="client.css" type="text/css" rel="stylesheet">
+ <script src="client.js" type="text/javascript"></script>
+ <script src="serverstub.js" type="text/javascript"></script>
+ </head>
+ <body>
+    <div id="content"></div>
+ </body>
+</html>
