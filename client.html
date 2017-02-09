@@ -9,7 +9,7 @@
             <form id="loginForm">
                 <label for=loginemail>Email:</label><input required id="loginemail" type="email"/></br>
                 <label for=loginpass>Password:</label><input required min=8 id="loginpass"type="password" /></br>
-                <button id="loginbutton" class="welcomebutton" type=”submit”>Login</button>
+                <button id="loginbutton" class="welcomebutton" type=”submit” onsubmit="return false;">Login</button>
                 <div id="loginerror" class="errormessage"></div>
             </form>
         </div>
@@ -28,7 +28,7 @@
                 <div><label for="email">Email</label><input required id="email"type="email"/></div>
                 <div><label for="pass">Password</label><input required id="pass"type="password"/></div>
                 <div><label for="passag">Repeat PSW</label><input required id="passag"type="password"/></div>
-                <div><button id="signupbutton" class="welcomebutton" type="submit">Sign up</button></div>
+                <div><button id="signupbutton" class="welcomebutton" type="submit" onsubmit="return false;">Sign up</button></div>
                 <div id="signuperror" class="errormessage"></div>
             </form>
         </div>
@@ -68,7 +68,7 @@
             <button id="changepassbutton" type="submit">Change password</button></br>
             </form>
             <div id="changepasserror" class="errormessage"></div>
-            <button id="logoutbutton" type="submit">Sign out</button></br>
+            <button id="logoutbutton" type="submit" onsubmit="return false;">Sign out</button></br>
          </div>
      </script>
  <link href="client.css" type="text/css" rel="stylesheet">

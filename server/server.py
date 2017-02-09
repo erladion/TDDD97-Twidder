@@ -4,6 +4,7 @@ from flask import request
 import database_helper
 import json
 import os
+import base64
 
 app = Flask(__name__)
 
@@ -28,10 +29,12 @@ def signin():
     email = request.form["email"]
     password = request.form["password"]
     data = database_helper.get_password(email)
+    print(data)
+    print(password)
     if data is None:
         return json.dumps({'success': False, 'message': 'The email or password is incorrect'})
 
-    if data is not password:
+    if data != password:
         return json.dumps({'success': False, 'message': 'The email or password is incorrect'})
 
     token = database_helper.get_token(email)
@@ -39,7 +42,9 @@ def signin():
         return json.dumps({'success': True, 'message': 'Already logged in', 'data': token})
     else:
         token = os.urandom(32)
-        database_helper.insert_token(email,token)
+        token = base64.b64encode(token).decode('utf-8)')
+        token.replace('/', 'a')
+        database_helper.insert_token(email, token)
         return json.dumps({'success': True, 'message': 'Successfully logged in', 'data': token})
 
 @app.route("/signout", methods=["post"])
@@ -66,17 +71,18 @@ def change_password():
         else:
             return json.dumps({'success': False, 'message': 'Wrong password'})
 
-@app.route("/get_user_data_by_token", methods=["get"])
-def get_user_data_by_token():
-    token = request.form["token"]
+@app.route("/get_user_data_by_token/<path:token>", methods=["GET"])
+def get_user_data_by_token(token):
+    print(token)
     email = database_helper.get_email(token)
+    print(email)
     if email is None:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
     else:
         data = database_helper.get_user(email)
         return json.dumps({'success': True, 'message': 'Data retrieval successful', "data": data})
 
-@app.route("/get_user_data_by_email", methods=["get"])
+@app.route("/get_user_data_by_email/<path:token>", methods=["get"])
 def get_user_data_by_email():
     token = request.form["token"]
     email = database_helper.get_email(token)
@@ -87,7 +93,7 @@ def get_user_data_by_email():
         data = database_helper.get_user(user_email)
         return json.dumps({'success': True, 'message': 'Data retrieval successful', "data": data})
 
-@app.route("/get_user_messages_by_token", methods=["get"])
+@app.route("/get_user_messages_by_token/<path:token>", methods=["get"])
 def get_user_messages_by_token():
     token = request.form["token"]
     email = database_helper.get_email(token)
@@ -97,7 +103,7 @@ def get_user_messages_by_token():
         data = database_helper.get_messages(email)
         return json.dumps({'success': True, 'message': 'Data retrieval successful', "data": data})
 
-@app.route("/get_user_messages_by_email", methods=["get"])
+@app.route("/get_user_messages_by_email/<path:token>", methods=["get"])
 def get_user_messages_by_email():
     token = request.form["token"]
     email = database_helper.get_email(token)
@@ -117,16 +123,13 @@ def post_message():
         return json.dumps({'success': False, 'message': 'User does not exist!'})
     senderEmail = database_helper.get_email(token)
 
-    #
-    # CONTINUE HERE
-    #
-    #
-
-    if message is "":
-        return json.dumps({'success':False, 'message': 'Message cannot be empty'})
+    if senderEmail is None:
+        return json.dumps({'success': False, 'message': 'User is not logged in'})
     else:
-
-
+        if message is "":
+            return json.dumps({'success':False, 'message': 'Message cannot be empty'})
+        else:
+            database_helper.post_message(senderEmail, email, message)
 
 if __name__ == '__main__':
     app.run()

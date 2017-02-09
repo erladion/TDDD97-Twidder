@@ -11,9 +11,11 @@ displayView = function(){
 var attachHandlersLogin = function(){
     var loginForm = document.getElementById("loginForm");
     var signupForm = document.getElementById("signupForm");
+    var loginButton = document.getElementById("loginbutton");
+    var signupButton = document.getElementById("signupbutton");
 
-    loginForm.setAttribute('onsubmit', "checkLoginForm(this); return false;");
-    signupForm.setAttribute('onsubmit', "checkSignupForm(this); return false;");
+    loginButton.addEventListener('click', function() {checkLoginForm(loginForm);});
+    signupButton.addEventListener('click', function() {checkSignupForm(signupForm);});
 }
 
 var attachHandlersHome = function(){
@@ -85,6 +87,7 @@ function logout(){
     serverstub.signOut(localStorage.getItem("token"));
     localStorage.removeItem("token");
     changeView("welcome");
+    attachHandlersLogin();
 }
 
 var changeTab = function(tabName, email){
@@ -136,7 +139,6 @@ var checkSignupForm = function(formData){
         city:formData.city.value,
         country:formData.country.value
     };
-    alert(formData.firnam.value);
     var returnData = serverstub.signUp(signupData);
     if (!returnData.success){
         document.getElementById("signuperror").innerHTML = returnData.message;
@@ -147,6 +149,7 @@ var checkSignupForm = function(formData){
         localStorage.setItem("token",loginAnswer.data);
         localStorage.setItem("email", formData.email.value);
         changeView("profile");
+        changeTab("home");
         attachHandlersHome();
     }
 }

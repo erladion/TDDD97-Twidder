@@ -12,8 +12,9 @@ body{
 }
 
 ul.tab {
+    margin: auto;
+    margin-top: 100px;
     list-style-type: none;
-    margin: 0;
     padding: 0;
     overflow: hidden;
     border: 1px solid #ccc;
@@ -38,11 +39,13 @@ ul.tab li a:hover {background-color: #ddd;}
 ul.tab li a:focus, .active {background-color: #ccc;}
 
 .tabcontent {
+    margin: auto;
     display: none;
     padding: 6px 12px;
     border: 1px solid;
     height: 500px;
     width: 686px;
+    background-color: #ffffff;
 
 }
 

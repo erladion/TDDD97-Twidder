@@ -8,36 +8,36 @@ def create_database():
         cur.executescript(dbscript.read())
 
 def check_email(email):
-    cur.execute("SELECT rowid FROM userInformation WHERE email = ?", (email,))
+    cur.execute("SELECT rowid FROM userInformation WHERE email LIKE ?", (email,))
     data = cur.fetchone()
     return data is not None
 
 def get_password(email):
-    cur.execute("SELECT password FROM userInformation WHERE email = ?", (email,))
+    cur.execute("SELECT password FROM userInformation WHERE email LIKE ?", (email,))
     data = cur.fetchone()
-    return data
+    return None if data is None else data[0]
 
 def create_user(firstname,lastname,email,gender,country,city,password):
     cur.execute('insert into userInformation values (?,?,?,?,?,?,?)',(firstname,lastname,email,gender,country,city,password))
     connection.commit()
 
 def insert_token(email,token):
-    cur.execute('insert into loggedInUsers values (?,?)',(email,token))
+    cur.execute('insert into loggedInUsers values (?,?)',(token,email))
     connection.commit()
 
 def get_token(email):
-    cur.execute("SELECT token FROM loggedInUsers WHERE email = ?", (email,))
+    cur.execute("SELECT token FROM loggedInUsers WHERE email LIKE ?", (email,))
     data = cur.fetchone()
-    return data
+    return None if data is None else data[0]
 
 def remove_token(token):
     cur.execute("delete from loggedInUsers where token = ?",(token,))
     connection.commit()
 
 def get_email(token):
-    cur.execute("SELECT email FROM loggedInUsers WHERE token = ?", (token,))
+    cur.execute("SELECT email FROM loggedInUsers WHERE token LIKE ?", (token,))
     data = cur.fetchone()
-    return data
+    return None if data is None else data[0]
 
 def change_password(email, password):
     cur.execute("UPDATE userInformation SET password=? WHERE email=?", (password, email))
