@@ -37,8 +37,13 @@ var attachHandlersHome = function(){
     var postButton = document.getElementById("postbutton");
     var refreshButton = document.getElementById("refreshbutton");
 
-    postButton.addEventListener("click", function() {postMessage();});
-    refreshButton.addEventListener("click", function() {listAllMessages();});
+    var searchPostButton = document.getElementById("searchpostbutton");
+    var searchRefreshButton = document.getElementById("searchrefreshbutton");
+
+    searchPostButton.addEventListener("click", function() {postMessage(true);});
+    postButton.addEventListener("click", function() {postMessage(false);});
+    searchRefreshButton.addEventListener("click", function() {listAllMessages(true);});
+    refreshButton.addEventListener("click", function() {listAllMessages(false);});
 
     var searchButton = document.getElementById("searchbutton");
 
@@ -55,10 +60,14 @@ function cleanErrors(){
 
 function search(email){
     var data = serverstub.getUserDataByEmail(localStorage.getItem("token"), email);
-    if (data.success)
-        changeTab("home", email);
-    else
+    if (data.success) {
+        localStorage.setItem("searchemail",email);
+        showUserInfo(email, "searchinfo");
+        listAllMessages(true);
+    }
+    else {
         document.getElementById("searcherror").innerHTML = data.message;
+    }
 }
 
 function changePassword(formData){
@@ -75,12 +84,20 @@ function changePassword(formData){
         document.getElementById("changepasserror").innerHTML = answer.message;
     }
     else{
+        document.getElementById("oldpass").reset();
+        document.getElementById("newpass").reset();
+        document.getElementById("newpassag").reset();
         cleanErrors();
+        document.getElementById("changepasserror").innerHTML = "Password changed successfully";
     }
 }
 
-function changeView(view){
-        document.getElementById("content").innerHTML = document.getElementById(view + "view").innerHTML;
+function changeView(view, email){
+    document.getElementById("content").innerHTML = document.getElementById(view + "view").innerHTML;
+    if(view == "profile") {
+        showUserInfo(email, "personalinfo");
+        listAllMessages(email);
+    }
 }
 
 function logout(){
@@ -97,9 +114,6 @@ var changeTab = function(tabName, email){
         tabContent[i].style.display = "none";
     }
     document.getElementById(tabName).style.display = "block";
-    localStorage.setItem("currentemail",email);
-    listAllMessages(email);
-    showUserInfo(email);
     cleanErrors();
 }
 
@@ -115,7 +129,7 @@ function checkLoginForm(formData){
     else{
         localStorage.setItem("token",loginAnswer.data);
         localStorage.setItem("email", formData.loginemail.value);
-        changeView("profile");
+        changeView("profile", formData.loginemail.value);
         changeTab("home");
         attachHandlersHome();
     }
@@ -154,11 +168,11 @@ var checkSignupForm = function(formData){
     }
 }
 
-var showUserInfo = function(email){
+var showUserInfo = function(email, areaName){
     email = email || localStorage.getItem("email");
     var info = serverstub.getUserDataByEmail(localStorage.getItem("token"), email);
     if (info.success) {
-        var infoArea = document.getElementById("personalinfo");
+        var infoArea = document.getElementById(areaName);
 
         infoArea.innerHTML = "First name: " + info.data.firstname + "</br>" +
         "Family name: " + info.data.familyname + "</br>" +
@@ -172,26 +186,29 @@ var showUserInfo = function(email){
     }
 }
 
-var postMessage = function(){
-    var messageToPost = document.getElementById("posttext").value;
+var postMessage = function(searcharea){
+    var email = (searcharea ? localStorage.getItem("searchemail") : localStorage.getItem("email"));
+    var posttext = (searcharea ? "searchposttext" : "posttext");
+    var posterror = (searcharea ? "searchposterror" : "posterror");
+    var messageToPost = document.getElementById(posttext).value;
     if (messageToPost == ""){
-        document.getElementById("posterror").innerHTML = "Can't post messages that are emtpy!";
+        document.getElementById(posterror).innerHTML = "Can't post messages that are emtpy!";
         return;
     }
-    var email = localStorage.getItem("currentemail");
     var post = serverstub.postMessage(localStorage.getItem("token"), messageToPost, email);
-    listAllMessages(email);
-    document.getElementById("posttext").value = "";
+    listAllMessages(searcharea);
+    document.getElementById(posttext).value = "";
     cleanErrors();
 }
 
-var listAllMessages = function(email){
-    email = email || localStorage.getItem("currentemail");
+var listAllMessages = function(searcharea){
+    var email = (searcharea ? localStorage.getItem("searchemail") : localStorage.getItem("email"));
+    var msgArea = (searcharea ? "searchmessages" : "messages");
     var messages = serverstub.getUserMessagesByEmail(localStorage.getItem("token"),email);
-    var messageArea = document.getElementById("messages");
+    var messageArea = document.getElementById(msgArea);
     messageArea.innerHTML = "";
     for(var i = 0; i < messages.data.length; i++){
-        messageArea.innerHTML += messages.data[i].writer + "</br>" + "<div class=\"postedmessage\">" + messages.data[i].content + "</div></br>";
+        messageArea.innerHTML += messages.data[i].writer + "</br>" + "<div class=\"postedmessage\">" + messages.data[i].content.replace(/</g,"&lt") + "</div></br>";
     }
     cleanErrors();
 }

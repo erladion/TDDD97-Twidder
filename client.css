@@ -2,10 +2,6 @@ body{
     background-color: cornflowerblue;
 }
 
-/*
- One property field for all divs
- and one property field for each divs
-*/
 .subdivs{
     background-color: white;
     border: 1px solid black;
@@ -59,35 +55,35 @@ ul.tab li a:focus, .active {background-color: #ccc;}
     font-size: 12px;
 }
 
-#refreshbutton{
+.refreshbutton{
     float:left;
     margin-left: 0px;
     margin-top: 1px;
 }
 
-#personalinfo{
+.personalinfo{
     float: left;
+    clear: left;
     width: 250px;
     border: solid 1px black;
     background-color: white;
     margin: 5px
 }
 
-#postbutton{
+.postbutton{
     float: right;
     margin-top: 1px;
     margin-right: 0px;
 }
 
-#messagearea{
+.messagearea{
     width: 410px;
     float: right;
-    clear: right;
     border: 1px solid;
     background-color: dodgerblue;
 }
 
-#posttext{
+.posttext{
     width: 410px;
 }
 
@@ -99,7 +95,7 @@ ul.tab li a:focus, .active {background-color: #ccc;}
     margin-top: 5px;
 }
 
-#messages{
+.messages{
     width: 410px;
     height: 300px;
     overflow: auto;

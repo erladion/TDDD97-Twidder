@@ -6,17 +6,17 @@
             <img src="wimage.png">
         </div>
         <div class="subdivs" id="signin">
-            <form id="loginForm">
+            <form id="loginForm" onsubmit="return false;">
                 <label for=loginemail>Email:</label><input required id="loginemail" type="email"/></br>
                 <label for=loginpass>Password:</label><input required min=8 id="loginpass"type="password" /></br>
-                <button id="loginbutton" class="welcomebutton" type=”submit” onsubmit="return false;">Login</button>
+                <button id="loginbutton" class="welcomebutton" type=”submit”x>Login</button>
                 <div id="loginerror" class="errormessage"></div>
             </form>
         </div>
 
         <div class="subdivs" id="signup">
             <h2>Sign up here</h2>
-            <form id="signupForm">
+            <form id="signupForm" onsubmit="return false;">
                 <div><label for="firnam">First Name</label><input required id="firnam" type="text"/></div>
                 <div><label for="famnam">Family Name</label><input required id="famnam" type="text"/></div>
                 <div><label for="gender">Gender</label><select id="gender">
@@ -28,7 +28,7 @@
                 <div><label for="email">Email</label><input required id="email"type="email"/></div>
                 <div><label for="pass">Password</label><input required id="pass"type="password"/></div>
                 <div><label for="passag">Repeat PSW</label><input required id="passag"type="password"/></div>
-                <div><button id="signupbutton" class="welcomebutton" type="submit" onsubmit="return false;">Sign up</button></div>
+                <div><button id="signupbutton" class="welcomebutton" type="submit" ">Sign up</button></div>
                 <div id="signuperror" class="errormessage"></div>
             </form>
         </div>
@@ -41,34 +41,48 @@
          </ul>
 
          <div id="home" class="tabcontent">
-            <div id="personalinfo">
+            <div class="personalinfo" id="personalinfo">
             </div>
 
-            <div id="messagearea">
-                <textarea id="posttext" rows="10"></textarea></br>
-                <button id="refreshbutton" type="submit">Refresh</button>
-                <button id="postbutton" type="submit">Post</button>
+            <div class="messagearea" id="messagearea">
+                <textarea class="posttext" id="posttext" rows="10"></textarea></br>
+                <button class="refreshbutton" id="refreshbutton" type="submit">Refresh</button>
+                <button class="postbutton" id="postbutton" type="submit">Post</button>
                 <div id="posterror" class="errormessage"></div></br></br>
-                <div id="messages">
+                <div class="messages" id="messages">
 
                 </div>
             </div>
          </div>
          <div id="browse" class="tabcontent">
-            <input id="emailbox" type="text"></input>
-            <button id="searchbutton">Search</button>
-            <div id="searcherror" class="errormessage"></div>
+
+            <div class="messagearea" id="searchmessagearea">
+                <textarea class="posttext" id="searchposttext" rows="10"></textarea></br>
+                <button class="refreshbutton" id="searchrefreshbutton" type="submit">Refresh</button>
+                <button class="postbutton" id="searchpostbutton" type="submit">Post</button>
+                <div id="searchposterror" class="errormessage"></div></br></br>
+                <div class="messages" id="searchmessages">
+
+                </div>
+            </div>
+            <div id="searcharea">
+                <input id="emailbox" type="text"></input>
+                <button id="searchbutton">Search</button>
+                <div id="searcherror" class="errormessage"></div>
+            </div>
+            <div class="personalinfo" id="searchinfo">
+            </div>
          </div>
 
          <div id="account" class="tabcontent">
-         <form id="changePassForm">
+         <form id="changePassForm" onsubmit="return false;">
             <label for="oldpass">Old Password</label><input id="oldpass" type="password"/></br>
             <label for="newpass">New Password</label><input id="newpass" type="password"/></br>
             <label for="newpassag">New Password again</label><input id="newpassag" type="password"/></br>
             <button id="changepassbutton" type="submit">Change password</button></br>
             </form>
             <div id="changepasserror" class="errormessage"></div>
-            <button id="logoutbutton" type="submit" onsubmit="return false;">Sign out</button></br>
+            <button id="logoutbutton" type="submit" >Sign out</button></br>
          </div>
      </script>
  <link href="client.css" type="text/css" rel="stylesheet">
