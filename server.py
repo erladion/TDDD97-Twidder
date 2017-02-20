@@ -8,6 +8,11 @@ import base64
 import re
 
 app = Flask(__name__)
+@app.route("/", methods=['GET'])
+def default():
+    print("YOLO")
+    print(app.send_static_file('static/client.html'))
+    return app.send_static_file('static/client.html')
 
 @app.route("/signup", methods=['POST'])
 def signup():
