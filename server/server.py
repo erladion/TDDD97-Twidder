@@ -5,6 +5,7 @@ import database_helper
 import json
 import os
 import base64
+import re
 
 app = Flask(__name__)
 
@@ -17,6 +18,15 @@ def signup():
     country = request.form['country']
     city = request.form['city']
     password = request.form['pass']
+
+    if(firstname == "" or familyname == "" or email == "" or gender == "" or country == "" or city == ""):
+        return json.dumps({'success': False, 'message': 'Not all fields are filled'})
+    if(gender != "Male" and gender != "Female"):
+        return json.dumps({'success': False, 'message': 'The gender is not valid'})
+
+    res = re.search("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$",email)
+    if(not res):
+        return json.dumps({'success': False, 'message': 'That is not a valid email address'})
     if len(password) < 8:
         return json.dumps({'success': False, 'message': 'The password is too short'})
     if database_helper.check_email(email):
@@ -49,8 +59,12 @@ def signin():
 @app.route("/signout", methods=["post"])
 def signout():
     token = request.form["token"]
-    database_helper.remove_token(token)
-    return json.dumps({'success': True, 'message': 'The user was logged out'})
+    if(database_helper.get_email(token)):
+        database_helper.remove_token(token)
+        return json.dumps({'success': True, 'message': 'The user was logged out'})
+    else:
+        return json.dumps({'success': False, 'message': 'User is not logged in'})
+
 
 @app.route("/change_password", methods=["post"])
 def change_password():
