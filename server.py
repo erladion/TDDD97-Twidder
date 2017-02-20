@@ -7,13 +7,12 @@ import os
 import base64
 import re
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='')
 @app.route("/", methods=['GET'])
 def default():
     print("YOLO")
-    print(app.send_static_file('static/client.html'))
-    return app.send_static_file('static/client.html')
-
+    print(app.send_static_file('client.html'))
+    return app.send_static_file('client.html')
 @app.route("/signup", methods=['POST'])
 def signup():
     firstname = request.form['firnam']

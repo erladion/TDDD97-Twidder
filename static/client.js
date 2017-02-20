@@ -144,28 +144,36 @@ var checkSignupForm = function(formData){
         document.getElementById("signuperror").innerHTML = "The passwords do not match!";
         return;
     }
-    var signupData = {
-        email: formData.email.value,
-        password: formData.pass.value,
-        firstname:formData.firnam.value,
-        familyname:formData.famnam.value,
-        gender:formData.gender.value,
-        city:formData.city.value,
-        country:formData.country.value
-    };
-    var returnData = serverstub.signUp(signupData);
-    if (!returnData.success){
-        document.getElementById("signuperror").innerHTML = returnData.message;
-    }
-    else{
-         var loginAnswer = serverstub.signIn(formData.email.value, formData.pass.value);
 
-        localStorage.setItem("token",loginAnswer.data);
-        localStorage.setItem("email", formData.email.value);
-        changeView("profile");
-        changeTab("home");
-        attachHandlersHome();
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function(){
+        if(this.readyState == 4 && this.status == 200){
+            var returnData = JSON.parse(xhttp.responseText);
+            if (!returnData.success){
+                document.getElementById("signuperror").innerHTML = returnData.message;
+            }
+            else{
+                 var loginAnswer = serverstub.signIn(formData.email.value, formData.pass.value);
+
+                localStorage.setItem("token",loginAnswer.data);
+                localStorage.setItem("email", formData.email.value);
+                changeView("profile");
+                changeTab("home");
+                attachHandlersHome();
+            }
+        }
     }
+
+    xhttp.open("POST", "signup", true);
+    var data = new FormData();
+    data.append('firnam',formData.firnam.value);
+    data.append('famnam',formData.famnam.value);
+    data.append('gender',formData.gender.value);
+    data.append('city',formData.city.value);
+    data.append('country', formData.country.value);
+    data.append('email', formData.email.value);
+    data.append('pass', formData.pass.value);
+    xhttp.send(data);
 }
 
 var showUserInfo = function(email, areaName){
