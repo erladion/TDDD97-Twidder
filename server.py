@@ -1,6 +1,9 @@
 # coding: utf8
 from flask import Flask
 from flask import request
+from gevent.wsgi import WSGIServer
+from geventwebsocket import WebSocketServer, WebSocketApplication, WebSocketError, Resource
+from geventwebsocket.handler import WebSocketHandler
 import database_helper
 import json
 import os
@@ -8,10 +11,45 @@ import base64
 import re
 
 app = Flask(__name__, static_url_path='')
+
+wslist = {}
+
+class TwidderApp(WebSocketApplication):
+    def on_open(self):
+        print("Hello, this is a new socket!")
+
+    def on_message(self,message):
+        message = json.loads(message)
+        if(message['messageType'] == "token"):
+            wslist[message['token']] = self.ws
+
+
+
+    def on_close(self):
+        print("Bye, socket is now dying!")
+
+@app.route('/websocket')
+def handle_websocket():
+    wsock = request.environ.get('wsgi.websocket')
+    if not wsock:
+        print("fail")
+        return
+    while True:
+        message = wsock.receive()
+        print(type(message))
+        if not message:
+            continue
+        obj = json.loads(message)
+        print(type(obj))
+        print(obj)
+        if(obj['messageType'] == "token"):
+            wslist[obj['token']] = wsock
+
+
+
+
 @app.route("/", methods=['GET'])
 def default():
-    print("YOLO")
-    print(app.send_static_file('client.html'))
     return app.send_static_file('client.html')
 @app.route("/signup", methods=['POST'])
 def signup():
@@ -21,7 +59,7 @@ def signup():
     gender = request.form['gender']
     country = request.form['country']
     city = request.form['city']
-    password = request.form['pass']
+    password = request.form['password']
 
     if(firstname == "" or familyname == "" or email == "" or gender == "" or country == "" or city == ""):
         return json.dumps({'success': False, 'message': 'Not all fields are filled'})
@@ -52,19 +90,28 @@ def signin():
         return json.dumps({'success': False, 'message': 'The email or password is incorrect'})
 
     token = database_helper.get_token(email)
+    print(token)
     if token is not None:
-        return json.dumps({'success': True, 'message': 'Already logged in', 'data': token})
-    else:
-        token = os.urandom(32)
-        token = base64.b64encode(token).decode('utf-8)')
-        database_helper.insert_token(email, token)
-        return json.dumps({'success': True, 'message': 'Successfully logged in', 'data': token})
+        database_helper.remove_token(token)
+        if(token in wslist):
+            wslist[token].send(json.dumps({'messageType': 'logout', 'message': "You just got logged out!"}))
+            wslist[token].close()
+            wslist.pop(token)
+
+
+    token = os.urandom(32)
+    token = base64.b64encode(token).decode('utf-8)')
+    print(token)
+    database_helper.insert_token(email, token)
+    return json.dumps({'success': True, 'message': 'Successfully logged in', 'data': token})
 
 @app.route("/signout", methods=["post"])
 def signout():
     token = request.form["token"]
     if(database_helper.get_email(token)):
         database_helper.remove_token(token)
+        if token in wslist:
+            wslist.pop(token)
         return json.dumps({'success': True, 'message': 'The user was logged out'})
     else:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
@@ -109,7 +156,11 @@ def get_user_data_by_email():
         return json.dumps({'success': False, 'message': 'User is not logged in'})
     else:
         data = database_helper.get_user(user_email)
-        return json.dumps({'success': True, 'message': 'Data retrieval successful', "data": data})
+        if data is not None:
+            retData = {'firstname': data[0], 'familyname': data[1], 'email': data[2], 'gender': data[3], 'city': data[4], 'country': data[5]}
+            return json.dumps({'success': True, 'message': 'Data retrieval successful', "data": retData})
+        else:
+            return json.dumps({'success': False, 'message': 'The user does not exist'})
 
 @app.route("/get_user_messages_by_token", methods=["get"])
 def get_user_messages_by_token():
@@ -130,7 +181,10 @@ def get_user_messages_by_email():
     else:
         user_email = request.args.get("user_email")
         data = database_helper.get_messages(user_email)
-        return json.dumps({'success': True, 'message': 'Data retrieval successful', "data": data})
+        retData = [];
+        for d in data:
+            retData.append({"writer": d[1], "content": d[0]})
+        return json.dumps({'success': True, 'message': 'Data retrieval successful', "data": retData})
 
 @app.route("/post_message", methods=["post"])
 def post_message():
@@ -151,4 +205,9 @@ def post_message():
             return json.dumps({'success': True, 'message': 'Message posted'})
 
 if __name__ == '__main__':
-    app.run()
+
+    http_server = WSGIServer(('', 5000), app, handler_class=WebSocketHandler)
+    http_server.serve_forever()
+    #WebSocketServer(('', 5000),Resource([('/socket', TwidderApp),]),debug=False).serve_forever()
+
+    #app.run()

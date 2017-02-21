@@ -59,15 +59,29 @@ function cleanErrors(){
 }
 
 function search(email){
-    var data = serverstub.getUserDataByEmail(localStorage.getItem("token"), email);
-    if (data.success) {
-        localStorage.setItem("searchemail",email);
-        showUserInfo(email, "searchinfo");
-        listAllMessages(true);
+    if (email == ""){
+        document.getElementById("searcherror").innerHTML = "Please enter a user email";
+        return;
     }
-    else {
-        document.getElementById("searcherror").innerHTML = data.message;
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function(){
+        if(this.readyState == 4 && this.status == 200){
+            var returnData = JSON.parse(xhttp.responseText);
+            console.log(xhttp.responseText);
+            if (returnData.success) {
+                localStorage.setItem("searchemail",email);
+                showUserInfo(email, "searchinfo");
+                listAllMessages(true);
+            }
+            else {
+                document.getElementById("searcherror").innerHTML = returnData.message;
+                logOutIfNotLoggedIn(returnData.message);
+            }
+        }
     }
+    var url = createGetURL("get_user_data_by_email", {'user_email': email, 'token': localStorage.getItem("token")});
+    xhttp.open("GET", url, true);
+    xhttp.send();
 }
 
 function changePassword(formData){
@@ -79,17 +93,28 @@ function changePassword(formData){
         document.getElementById("changepasserror").innerHTML = "The passwords do not match!";
         return;
     }
-    var answer = serverstub.changePassword(localStorage.getItem("token"),formData.oldpass.value,formData.newpass.value);
-    if(!answer.success){
-        document.getElementById("changepasserror").innerHTML = answer.message;
+
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function(){
+        if(this.readyState == 4 && this.status == 200){
+            var returnData = JSON.parse(xhttp.responseText);
+            if(!returnData.success){
+                document.getElementById("changepasserror").innerHTML = returnData.message;
+                logOutIfNotLoggedIn(returnData.message);
+            }
+            else{
+                document.getElementById("changePassForm").reset();
+                cleanErrors();
+                document.getElementById("changepasserror").innerHTML = "Password changed successfully";
+            }
+        }
     }
-    else{
-        document.getElementById("oldpass").reset();
-        document.getElementById("newpass").reset();
-        document.getElementById("newpassag").reset();
-        cleanErrors();
-        document.getElementById("changepasserror").innerHTML = "Password changed successfully";
-    }
+    xhttp.open("POST", "change_password", true);
+    var data = new FormData();
+    data.append('token', localStorage.getItem("token"));
+    data.append('newpass', formData.newpass.value);
+    data.append('oldpass', formData.oldpass.value);
+    xhttp.send(data);
 }
 
 function changeView(view, email){
@@ -101,10 +126,18 @@ function changeView(view, email){
 }
 
 function logout(){
-    serverstub.signOut(localStorage.getItem("token"));
-    localStorage.removeItem("token");
-    changeView("welcome");
-    attachHandlersLogin();
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function(){
+        if(this.readyState == 4 && this.status == 200){
+            localStorage.removeItem("token");
+            changeView("welcome");
+            attachHandlersLogin();
+        }
+    }
+    xhttp.open("POST", "signout", true);
+    var data = new FormData();
+    data.append('token', localStorage.getItem("token"));
+    xhttp.send(data);
 }
 
 var changeTab = function(tabName, email){
@@ -117,22 +150,53 @@ var changeTab = function(tabName, email){
     cleanErrors();
 }
 
+function createSocket(token) {
+    var newSocket = new WebSocket("ws://127.0.0.1:5000/websocket")
+    newSocket.onopen = function () {
+        newSocket.send(JSON.stringify({'messageType': 'token', 'token': token}))
+    }
+    newSocket.onmessage = function (event) {
+        var returnData = JSON.parse(event.data)
+        if (returnData.messageType == 'logout') {
+            localStorage.removeItem("token");
+            changeView("welcome");
+            attachHandlersLogin();
+        }
+    }
+}
+function login(email, password){
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function(){
+        if(this.readyState == 4 && this.status == 200){
+            var returnData = JSON.parse(xhttp.responseText);
+            if (!returnData.success){
+                document.getElementById("loginerror").innerHTML = returnData.message;
+                logOutIfNotLoggedIn(returnData.message);
+            }
+            else{
+                localStorage.setItem("token", returnData.data);
+                localStorage.setItem("email", email);
+                changeView("profile");
+                changeTab("home");
+                attachHandlersHome();
+                createSocket(returnData.data);
+            }
+        }
+    }
+    xhttp.open("POST", "signin", true);
+    var data = new FormData();
+    data.append('email', email);
+    data.append('password', password);
+    xhttp.send(data);
+
+}
+
 function checkLoginForm(formData){
     if (!checkPassLength(formData.loginpass.value)){
         document.getElementById("loginerror").innerHTML = "The password is too short. It needs to be at least 8 characters.";
         return;
     }
-    var loginAnswer = serverstub.signIn(formData.loginemail.value, formData.loginpass.value);
-    if(!loginAnswer.success){
-        document.getElementById("loginerror").innerHTML = loginAnswer.message;
-    }
-    else{
-        localStorage.setItem("token",loginAnswer.data);
-        localStorage.setItem("email", formData.loginemail.value);
-        changeView("profile", formData.loginemail.value);
-        changeTab("home");
-        attachHandlersHome();
-    }
+    login(formData.loginemail.value, formData.loginpass.value);
 }
 
 var checkSignupForm = function(formData){
@@ -151,15 +215,10 @@ var checkSignupForm = function(formData){
             var returnData = JSON.parse(xhttp.responseText);
             if (!returnData.success){
                 document.getElementById("signuperror").innerHTML = returnData.message;
+                logOutIfNotLoggedIn(returnData.message);
             }
             else{
-                 var loginAnswer = serverstub.signIn(formData.email.value, formData.pass.value);
-
-                localStorage.setItem("token",loginAnswer.data);
-                localStorage.setItem("email", formData.email.value);
-                changeView("profile");
-                changeTab("home");
-                attachHandlersHome();
+                login(formData.email.value, formData.pass.value);
             }
         }
     }
@@ -172,26 +231,57 @@ var checkSignupForm = function(formData){
     data.append('city',formData.city.value);
     data.append('country', formData.country.value);
     data.append('email', formData.email.value);
-    data.append('pass', formData.pass.value);
+    data.append('password', formData.pass.value);
     xhttp.send(data);
 }
 
 var showUserInfo = function(email, areaName){
     email = email || localStorage.getItem("email");
-    var info = serverstub.getUserDataByEmail(localStorage.getItem("token"), email);
-    if (info.success) {
-        var infoArea = document.getElementById(areaName);
 
-        infoArea.innerHTML = "First name: " + info.data.firstname + "</br>" +
-        "Family name: " + info.data.familyname + "</br>" +
-        "Gender: " + info.data.gender + "</br>" +
-        "Email: " + info.data.email + "</br>" +
-        "City: " + info.data.city + "</br>" +
-        "Country: " + info.data.country;
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function(){
+        if(this.readyState == 4 && this.status == 200){
+            var returnData = JSON.parse(xhttp.responseText);
+            console.log(xhttp.responseText);
+            if (returnData.success) {
+                var infoArea = document.getElementById(areaName);
+
+                infoArea.innerHTML = "First name: " + returnData.data.firstname + "</br>" +
+                "Family name: " + returnData.data.familyname + "</br>" +
+                "Gender: " + returnData.data.gender + "</br>" +
+                "Email: " + returnData.data.email + "</br>" +
+                "City: " + returnData.data.city + "</br>" +
+                "Country: " + returnData.data.country;
+            }
+            else{
+                document.getElementById("posterror").innerHTML = returnData.message;
+                logOutIfNotLoggedIn(returnData.message);
+            }
+        }
     }
-    else{
-        document.getElementById("posterror").innerHTML = info.message;
+    var url = createGetURL("get_user_data_by_email", {'user_email': email, 'token': localStorage.getItem("token")});
+    xhttp.open("GET", url, true);
+    xhttp.send();
+
+
+}
+
+function logOutIfNotLoggedIn(message){
+    if(message == "User is not logged in"){
+        localStorage.removeItem("token");
+        changeView("welcome");
+        attachHandlersLogin();
     }
+}
+
+function createGetURL(route,params){
+    route += "?";
+    for (param in params){
+        route += param + "=" + params[param] + "&";
+    }
+    route = route.slice(0, -1);
+    console.log(route);
+    return route;
 }
 
 var postMessage = function(searcharea){
@@ -203,22 +293,55 @@ var postMessage = function(searcharea){
         document.getElementById(posterror).innerHTML = "Can't post messages that are emtpy!";
         return;
     }
-    var post = serverstub.postMessage(localStorage.getItem("token"), messageToPost, email);
-    listAllMessages(searcharea);
-    document.getElementById(posttext).value = "";
-    cleanErrors();
+
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function(){
+        if(this.readyState == 4 && this.status == 200){
+            var returnData = JSON.parse(xhttp.responseText);
+            if (returnData.success) {
+                listAllMessages(searcharea);
+                document.getElementById(posttext).value = "";
+                cleanErrors();
+            }
+            else{
+                document.getElementById(posterror).innerHTML = returnData.message;
+                logOutIfNotLoggedIn(returnData.message);
+            }
+        }
+    }
+    xhttp.open("POST", "post_message", true);
+    var data = new FormData();
+    data.append('token',localStorage.getItem("token"));
+    data.append('message',messageToPost);
+    data.append('email', email);
+    xhttp.send(data);
 }
 
 var listAllMessages = function(searcharea){
     var email = (searcharea ? localStorage.getItem("searchemail") : localStorage.getItem("email"));
     var msgArea = (searcharea ? "searchmessages" : "messages");
-    var messages = serverstub.getUserMessagesByEmail(localStorage.getItem("token"),email);
     var messageArea = document.getElementById(msgArea);
     messageArea.innerHTML = "";
-    for(var i = 0; i < messages.data.length; i++){
-        messageArea.innerHTML += messages.data[i].writer + "</br>" + "<div class=\"postedmessage\">" + messages.data[i].content.replace(/</g,"&lt") + "</div></br>";
+
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = function(){
+        if(this.readyState == 4 && this.status == 200){
+            var returnData = JSON.parse(xhttp.responseText);
+            if (returnData.success) {
+                for(var i = returnData.data.length - 1; i >= 0; i--){
+                    messageArea.innerHTML += returnData.data[i].writer + "</br>" + "<div class=\"postedmessage\">" + returnData.data[i].content.replace(/</g,"&lt") + "</div></br>";
+                }
+                cleanErrors();
+            }
+            else{
+                logOutIfNotLoggedIn(returnData.message);
+            }
+        }
     }
-    cleanErrors();
+    var url = createGetURL("get_user_messages_by_email", {'user_email': email, 'token': localStorage.getItem("token")});
+    xhttp.open("GET", url, true);
+    xhttp.send();
+
 }
 
 var checkPassLength = function(password){
@@ -227,6 +350,7 @@ var checkPassLength = function(password){
 
 window.onload = function(){
     if(localStorage.getItem("token") != null){
+        createSocket(localStorage.getItem("token"));
         changeView("profile");
         attachHandlersHome();
         changeTab("home");
