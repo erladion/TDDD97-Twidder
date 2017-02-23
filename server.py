@@ -35,16 +35,19 @@ def handle_websocket():
         print("fail")
         return
     while True:
-        message = wsock.receive()
-        print(type(message))
-        if not message:
-            continue
-        obj = json.loads(message)
-        print(type(obj))
-        print(obj)
-        if(obj['messageType'] == "token"):
-            wslist[obj['token']] = wsock
-
+        try:
+            message = wsock.receive()
+            print(type(message))
+            if not message:
+                continue
+            obj = json.loads(message)
+            print(type(obj))
+            print(obj)
+            if(obj['messageType'] == "token"):
+                wslist[obj['token']] = wsock
+        except WebSocketError:
+            wslist.pop(wsock)
+            break
 
 
 
@@ -92,8 +95,10 @@ def signin():
     token = database_helper.get_token(email)
     print(token)
     if token is not None:
+        print("we got a token")
         database_helper.remove_token(token)
         if(token in wslist):
+            print("got socket")
             wslist[token].send(json.dumps({'messageType': 'logout', 'message': "You just got logged out!"}))
             wslist[token].close()
             wslist.pop(token)
@@ -152,6 +157,9 @@ def get_user_data_by_email():
     user_email = request.args.get("user_email")
     token = request.args.get("token")
     email = database_helper.get_email(token)
+    print("get user data:")
+    print(token)
+    print(email)
     if email is None:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
     else:

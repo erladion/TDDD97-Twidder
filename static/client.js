@@ -171,7 +171,6 @@ function login(email, password){
             var returnData = JSON.parse(xhttp.responseText);
             if (!returnData.success){
                 document.getElementById("loginerror").innerHTML = returnData.message;
-                logOutIfNotLoggedIn(returnData.message);
             }
             else{
                 localStorage.setItem("token", returnData.data);
@@ -279,6 +278,7 @@ function createGetURL(route,params){
     for (param in params){
         route += param + "=" + params[param] + "&";
     }
+    route = route.replace(/\+/g, '%2B');
     route = route.slice(0, -1);
     console.log(route);
     return route;
@@ -327,6 +327,7 @@ var listAllMessages = function(searcharea){
     xhttp.onreadystatechange = function(){
         if(this.readyState == 4 && this.status == 200){
             var returnData = JSON.parse(xhttp.responseText);
+            console.log(xhttp.responseText);
             if (returnData.success) {
                 for(var i = returnData.data.length - 1; i >= 0; i--){
                     messageArea.innerHTML += returnData.data[i].writer + "</br>" + "<div class=\"postedmessage\">" + returnData.data[i].content.replace(/</g,"&lt") + "</div></br>";
