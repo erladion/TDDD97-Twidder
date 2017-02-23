@@ -2,7 +2,6 @@
  * Created by johja118 on 2017-01-24.
  */
 
-
 displayView = function(){
  // the code required to display a view
     // do some fancy stuff here
@@ -49,6 +48,7 @@ var attachHandlersHome = function(){
 
     searchButton.addEventListener("click", function() { search(document.getElementById("emailbox").value);});
 
+
 }
 
 function cleanErrors(){
@@ -69,6 +69,8 @@ function search(email){
             var returnData = JSON.parse(xhttp.responseText);
             console.log(xhttp.responseText);
             if (returnData.success) {
+                document.getElementById("searchmessagearea").style.visibility = "visible";
+                document.getElementById("searchinfo").style.visibility = "visible";
                 localStorage.setItem("searchemail",email);
                 showUserInfo(email, "searchinfo");
                 listAllMessages(true);

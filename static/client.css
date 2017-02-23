@@ -44,6 +44,18 @@ ul.tab li a:focus, .active {background-color: #ccc;}
     background-color: #ffffff;
 
 }
+#searchinfo{
+    visibility: hidden;
+}
+
+#searchmessagearea{
+    visibility: hidden;
+}
+
+#myChart {
+    float:left;
+    clear:right;
+}
 
 .welcomebutton{
     float: right;
