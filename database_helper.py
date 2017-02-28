@@ -16,8 +16,8 @@ def get_password(email):
     data = cur.fetchone()
     return None if data is None else data[0]
 
-def create_user(firstname,lastname,email,gender,country,city,password):
-    cur.execute('insert into userInformation values (?,?,?,?,?,?,?,0,0)',(firstname,lastname,email,gender,country,city,password))
+def create_user(firstname,lastname,email,gender,country,city,password, privatekey):
+    cur.execute('insert into userInformation values (?,?,?,?,?,?,?,0,0,?)',(firstname,lastname,email,gender,country,city,password,privatekey))
     connection.commit()
 
 def insert_token(email,token):
@@ -26,6 +26,11 @@ def insert_token(email,token):
 
 def get_token(email):
     cur.execute("SELECT token FROM loggedInUsers WHERE email LIKE ?", (email,))
+    data = cur.fetchone()
+    return None if data is None else data[0]
+
+def get_private_key(email):
+    cur.execute("SELECT privateKey FROM userInformation WHERE email LIKE ?", (email,))
     data = cur.fetchone()
     return None if data is None else data[0]
 

@@ -128,6 +128,7 @@ function changePassword(formData){
     data.append('token', localStorage.getItem("token"));
     data.append('newpass', formData.newpass.value);
     data.append('oldpass', formData.oldpass.value);
+    data.append('hash', hashBlob(formData.oldpass.value + formData.newpass.value));
     xhttp.send(data);
 }
 
@@ -204,7 +205,8 @@ function login(email, password){
                 document.getElementById("loginerror").innerHTML = returnData.message;
             }
             else{
-                localStorage.setItem("token", returnData.data);
+                localStorage.setItem("token", returnData.data.token);
+                localStorage.setItem("private_key", returnData.data.key);
                 localStorage.setItem("email", email);
                 changeView("profile");
                 changeTab("home");
@@ -265,6 +267,12 @@ var checkSignupForm = function(formData){
     xhttp.send(data);
 }
 
+function hashBlob(blob){
+    blob = blob + localStorage.getItem("token") + localStorage.getItem('private_key');
+    var hashed = CryptoJS.SHA512(blob);
+    return hashed.toString(CryptoJS.Base64);
+}
+
 var showUserInfo = function(email, areaName){
     email = email || localStorage.getItem("email");
 
@@ -294,7 +302,8 @@ var showUserInfo = function(email, areaName){
             }
         }
     }
-    var url = createGetURL("get_user_data_by_email", {'user_email': email, 'token': localStorage.getItem("token")});
+    var url = createGetURL("get_user_data_by_email", {
+        'user_email': email, 'token': localStorage.getItem("token"), 'hash': hashBlob(email)});
     xhttp.open("GET", url, true);
     xhttp.send();
 
@@ -350,6 +359,7 @@ var postMessage = function(searcharea){
     data.append('token',localStorage.getItem("token"));
     data.append('message',messageToPost);
     data.append('email', email);
+    data.append('hash', hashBlob(messageToPost + email));
     xhttp.send(data);
 }
 
@@ -395,7 +405,8 @@ var listAllMessages = function(searcharea){
             }
         }
     }
-    var url = createGetURL("get_user_messages_by_email", {'user_email': email, 'token': localStorage.getItem("token")});
+    var url = createGetURL("get_user_messages_by_email", {
+        'user_email': email, 'token': localStorage.getItem("token"), 'hash': hashBlob(email)});
     xhttp.open("GET", url, true);
     xhttp.send();
 

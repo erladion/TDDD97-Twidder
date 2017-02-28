@@ -1,5 +1,6 @@
 # coding: utf8
 from flask import Flask
+from flask_bcrypt import Bcrypt
 from flask import request
 from gevent.wsgi import WSGIServer
 from geventwebsocket import WebSocketServer, WebSocketApplication, WebSocketError, Resource
@@ -9,8 +10,10 @@ import json
 import os
 import base64
 import re
+import hashlib
 
 app = Flask(__name__, static_url_path='')
+bcrypt = Bcrypt(app)
 
 wslist = {}
 
@@ -50,6 +53,9 @@ def signup():
     country = request.form['country']
     city = request.form['city']
     password = request.form['password']
+    hashed_password = bcrypt.generate_password_hash(password)
+    private_key = os.urandom(32)
+    private_key = base64.b64encode(private_key).decode('utf-8)')
 
     if(firstname == "" or familyname == "" or email == "" or gender == "" or country == "" or city == ""):
         return json.dumps({'success': False, 'message': 'Not all fields are filled'})
@@ -63,7 +69,7 @@ def signup():
         return json.dumps({'success': False, 'message': 'The password is too short'})
     if database_helper.check_email(email):
         return json.dumps({'success': False, 'message': 'A user with that email already exists'})
-    database_helper.create_user(firstname, familyname, email, gender, country, city, password)
+    database_helper.create_user(firstname, familyname, email, gender, country, city, hashed_password, private_key)
     for user in wslist:
         wslist[user].send(json.dumps({'messageType': 'totalUsers', 'message': database_helper.getAllUserCount()}))
     return json.dumps({'success': True, 'message': 'All went well'})
@@ -76,7 +82,7 @@ def signin():
     if data is None:
         return json.dumps({'success': False, 'message': 'The email or password is incorrect'})
 
-    if data != password:
+    if bcrypt.check_password_hash(data, password):
         return json.dumps({'success': False, 'message': 'The email or password is incorrect'})
 
     token = database_helper.get_token(email)
@@ -92,9 +98,10 @@ def signin():
     token = os.urandom(32)
     token = base64.b64encode(token).decode('utf-8)')
     database_helper.insert_token(email, token)
+    private_key = database_helper.get_private_key(email)
     for user in wslist:
         wslist[user].send(json.dumps({'messageType': 'loggedInUsers', 'message': database_helper.getLoggedInUsersCount()}))
-    return json.dumps({'success': True, 'message': 'Successfully logged in', 'data': token})
+    return json.dumps({'success': True, 'message': 'Successfully logged in', 'data': {'token': token, 'key': private_key}})
 
 @app.route("/signout", methods=["post"])
 def signout():
@@ -110,12 +117,24 @@ def signout():
     else:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
 
+def check_hash(blob,token,hash):
+    key = database_helper.get_private_key(database_helper.get_email(token))
+    print(blob)
+    print(token)
+    print(key)
+    blob = blob + token + key
+    hashed = hashlib.sha512(blob).digest()
+    hashed = base64.b64encode(hashed)
+    return hashed == hash
 
 @app.route("/change_password", methods=["post"])
 def change_password():
     oldPassword = request.form["oldpass"]
     newPassword = request.form["newpass"]
     token = request.form["token"]
+    blob = oldPassword + newPassword
+    if check_hash(blob, token, request.form["hash"]):
+        return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
 
     if len(newPassword) < 8:
         return json.dumps({'success': False, 'message': 'The password is too short'})
@@ -133,6 +152,9 @@ def change_password():
 @app.route("/get_user_data_by_token", methods=["GET"])
 def get_user_data_by_token():
     token = request.args.get("token")
+
+    if check_hash("", token, request.args.get("hash")):
+        return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
     email = database_helper.get_email(token)
     if email is None:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
@@ -142,9 +164,11 @@ def get_user_data_by_token():
 
 @app.route("/get_user_data_by_email", methods=["get"])
 def get_user_data_by_email():
-    print("You are doing it wrong!")
     user_email = request.args.get("user_email")
     token = request.args.get("token")
+    blob = user_email
+    if check_hash(blob, token, request.args.get("hash")):
+        return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
     email = database_helper.get_email(token)
     if email is None:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
@@ -169,6 +193,8 @@ def get_user_data_by_email():
 @app.route("/get_user_messages_by_token", methods=["get"])
 def get_user_messages_by_token():
     token = request.args.get("token")
+    if check_hash("", token, request.args.get("hash")):
+        return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
     email = database_helper.get_email(token)
     if email is None:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
@@ -179,11 +205,14 @@ def get_user_messages_by_token():
 @app.route("/get_user_messages_by_email", methods=["get"])
 def get_user_messages_by_email():
     token = request.args.get("token")
+    user_email = request.args.get("user_email")
+    blob = user_email
+    if check_hash(blob, token, request.args.get("hash")):
+        return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
     email = database_helper.get_email(token)
     if email is None:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
     else:
-        user_email = request.args.get("user_email")
         data = database_helper.get_messages(user_email)
         retData = [];
         for d in data:
@@ -195,6 +224,9 @@ def post_message():
     token = request.form["token"]
     message = request.form["message"]
     email = request.form["email"]
+    blob = message + email
+    if check_hash(blob, token, request.form["hash"]):
+        return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
     if database_helper.check_email(email) is False:
         return json.dumps({'success': False, 'message': 'User does not exist!'})
     senderEmail = database_helper.get_email(token)
