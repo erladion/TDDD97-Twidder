@@ -353,6 +353,26 @@ var postMessage = function(searcharea){
     xhttp.send(data);
 }
 
+function allowDrop(event){
+    event.preventDefault();
+    event.stopPropagation();
+}
+
+function drag(event){
+    print("test")
+    event.dataTransfer.setData("text", event.target.innerHTML);
+    print(event.dataTransfer.getData("text"));
+}
+
+function drop(event){
+    event.preventDefault();
+    event.stopPropagation();
+    print("yolo");
+    print(event.dataTransfer.getData("text"));
+    print(event.target.innerHTML);
+    event.target.value += event.dataTransfer.getData("text") + "\n";
+}
+
 var listAllMessages = function(searcharea){
     var email = (searcharea ? localStorage.getItem("searchemail") : localStorage.getItem("email"));
     var msgArea = (searcharea ? "searchmessages" : "messages");
@@ -366,7 +386,7 @@ var listAllMessages = function(searcharea){
             console.log(xhttp.responseText);
             if (returnData.success) {
                 for(var i = returnData.data.length - 1; i >= 0; i--){
-                    messageArea.innerHTML += returnData.data[i].writer + "</br>" + "<div class=\"postedmessage\">" + returnData.data[i].content.replace(/</g,"&lt") + "</div></br>";
+                    messageArea.innerHTML += returnData.data[i].writer + "</br>" + "<div class=\"postedmessage\" draggable=\"true\" ondragstart=\"drag(event)\">" + returnData.data[i].content.replace(/</g,"&lt") + "</div></br>";
                 }
                 cleanErrors();
             }

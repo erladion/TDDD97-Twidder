@@ -44,7 +44,7 @@
             <div class="personalinfo" id="personalinfo">
             </div>
             <div class="messagearea" id="messagearea">
-                <textarea class="posttext" id="posttext" rows="10"></textarea></br>
+                <textarea class="posttext" id="posttext" rows="10" ondrop="drop(event)" ondragover="allowDrop(event)"></textarea></br>
                 <button class="refreshbutton" id="refreshbutton" type="submit">Refresh</button>
                 <button class="postbutton" id="postbutton" type="submit">Post</button>
                 <div id="posterror" class="errormessage"></div></br></br>
@@ -62,7 +62,7 @@
          <div id="browse" class="tabcontent">
 
             <div class="messagearea" id="searchmessagearea">
-                <textarea class="posttext" id="searchposttext" rows="10"></textarea></br>
+                <textarea class="posttext" id="searchposttext" rows="10"  ondrop="drop(event)" ondragover="allowDrop(event)"></textarea></br>
                 <button class="refreshbutton" id="searchrefreshbutton" type="submit">Refresh</button>
                 <button class="postbutton" id="searchpostbutton" type="submit">Post</button>
                 <div id="searchposterror" class="errormessage"></div></br></br>
