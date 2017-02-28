@@ -82,6 +82,11 @@ ul.tab li a:focus, .active {background-color: #ccc;}
     margin: 5px
 }
 
+#stats{
+    float: left;
+    clear: left;
+}
+
 .postbutton{
     float: right;
     margin-top: 1px;

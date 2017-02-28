@@ -14,20 +14,6 @@ app = Flask(__name__, static_url_path='')
 
 wslist = {}
 
-class TwidderApp(WebSocketApplication):
-    def on_open(self):
-        print("Hello, this is a new socket!")
-
-    def on_message(self,message):
-        message = json.loads(message)
-        if(message['messageType'] == "token"):
-            wslist[message['token']] = self.ws
-
-
-
-    def on_close(self):
-        print("Bye, socket is now dying!")
-
 @app.route('/websocket')
 def handle_websocket():
     wsock = request.environ.get('wsgi.websocket')
@@ -37,14 +23,15 @@ def handle_websocket():
     while True:
         try:
             message = wsock.receive()
-            print(type(message))
             if not message:
                 continue
             obj = json.loads(message)
-            print(type(obj))
-            print(obj)
             if(obj['messageType'] == "token"):
                 wslist[obj['token']] = wsock
+                wsock.send(json.dumps({"messageType": 'login'}))
+                wsock.send(json.dumps({'messageType': 'loggedInUsers', 'message': database_helper.getLoggedInUsersCount()}))
+                wsock.send(json.dumps({'messageType': 'totalUsers', 'message': database_helper.getAllUserCount()}))
+
         except WebSocketError:
             wslist.pop(wsock)
             break
@@ -77,6 +64,8 @@ def signup():
     if database_helper.check_email(email):
         return json.dumps({'success': False, 'message': 'A user with that email already exists'})
     database_helper.create_user(firstname, familyname, email, gender, country, city, password)
+    for user in wslist:
+        wslist[user].send(json.dumps({'messageType': 'totalUsers', 'message': database_helper.getAllUserCount()}))
     return json.dumps({'success': True, 'message': 'All went well'})
 
 @app.route("/signin", methods=["post"])
@@ -84,8 +73,6 @@ def signin():
     email = request.form["email"]
     password = request.form["password"]
     data = database_helper.get_password(email)
-    print(data)
-    print(password)
     if data is None:
         return json.dumps({'success': False, 'message': 'The email or password is incorrect'})
 
@@ -95,10 +82,8 @@ def signin():
     token = database_helper.get_token(email)
     print(token)
     if token is not None:
-        print("we got a token")
         database_helper.remove_token(token)
         if(token in wslist):
-            print("got socket")
             wslist[token].send(json.dumps({'messageType': 'logout', 'message': "You just got logged out!"}))
             wslist[token].close()
             wslist.pop(token)
@@ -106,8 +91,9 @@ def signin():
 
     token = os.urandom(32)
     token = base64.b64encode(token).decode('utf-8)')
-    print(token)
     database_helper.insert_token(email, token)
+    for user in wslist:
+        wslist[user].send(json.dumps({'messageType': 'loggedInUsers', 'message': database_helper.getLoggedInUsersCount()}))
     return json.dumps({'success': True, 'message': 'Successfully logged in', 'data': token})
 
 @app.route("/signout", methods=["post"])
@@ -117,6 +103,9 @@ def signout():
         database_helper.remove_token(token)
         if token in wslist:
             wslist.pop(token)
+
+        for user in wslist:
+            wslist[user].send(json.dumps({'messageType': 'loggedInUsers', 'message': database_helper.getLoggedInUsersCount()}))
         return json.dumps({'success': True, 'message': 'The user was logged out'})
     else:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
@@ -145,7 +134,6 @@ def change_password():
 def get_user_data_by_token():
     token = request.args.get("token")
     email = database_helper.get_email(token)
-    print(email)
     if email is None:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
     else:
@@ -154,17 +142,25 @@ def get_user_data_by_token():
 
 @app.route("/get_user_data_by_email", methods=["get"])
 def get_user_data_by_email():
+    print("You are doing it wrong!")
     user_email = request.args.get("user_email")
     token = request.args.get("token")
     email = database_helper.get_email(token)
-    print("get user data:")
-    print(token)
-    print(email)
     if email is None:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
     else:
         data = database_helper.get_user(user_email)
+        tok = database_helper.get_token(user_email)
+
         if data is not None:
+            if user_email != email:
+                da = database_helper.get_user(email)
+                database_helper.updateViews(user_email, da[3])
+            if tok is not None and tok in wslist:
+                print("view updated")
+                d = database_helper.getViews(user_email)
+                print("D:", d)
+                wslist[tok].send(json.dumps({'messageType': 'views', 'message': [d[0],d[1]]}))
             retData = {'firstname': data[0], 'familyname': data[1], 'email': data[2], 'gender': data[3], 'city': data[4], 'country': data[5]}
             return json.dumps({'success': True, 'message': 'Data retrieval successful', "data": retData})
         else:

@@ -17,7 +17,7 @@ def get_password(email):
     return None if data is None else data[0]
 
 def create_user(firstname,lastname,email,gender,country,city,password):
-    cur.execute('insert into userInformation values (?,?,?,?,?,?,?)',(firstname,lastname,email,gender,country,city,password))
+    cur.execute('insert into userInformation values (?,?,?,?,?,?,?,0,0)',(firstname,lastname,email,gender,country,city,password))
     connection.commit()
 
 def insert_token(email,token):
@@ -55,3 +55,26 @@ def get_messages(email):
 def post_message(senderEmail, recieverEmail, message):
     cur.execute("INSERT INTO messages VALUES (?, ?, ?)", (message, senderEmail, recieverEmail))
     connection.commit()
+
+def updateViews(email, gender):
+    print(gender)
+    if(gender == "Female"):
+        cur.execute("UPDATE userInformation SET femaleViews= femaleViews + 1 WHERE email = ?", (email,))
+    else:
+        cur.execute("UPDATE userInformation SET maleViews= maleViews + 1 WHERE email = ?", (email,))
+    connection.commit()
+
+def getViews(email):
+    cur.execute("SELECT maleViews, femaleViews FROM userInformation WHERE email = ?", (email,))
+    data = cur.fetchone()
+    return data
+
+def getLoggedInUsersCount():
+    cur.execute("SELECT Count(*) FROM loggedInUsers")
+    data = cur.fetchone()
+    return data
+
+def getAllUserCount():
+    cur.execute("SELECT Count(*) FROM userInformation")
+    data = cur.fetchone()
+    return data

@@ -48,7 +48,42 @@ var attachHandlersHome = function(){
 
     searchButton.addEventListener("click", function() { search(document.getElementById("emailbox").value);});
 
+    var pieChart = document.getElementById("piechart");
+    var data = {
+        labels: [
+            "Male",
+            "Female"
+        ],
+        datasets: [
+            {
+                data: [0, 0],
+                backgroundColor: [
+                    "#5cf442",
+                    "#ff0000"
+                ]
+            }]
+    }
 
+    myPieChart = new Chart(pieChart,{
+        type: 'pie',
+        data: data,
+        options: {
+            responsive: false
+        }
+    });
+    pieChart.width = 200;
+    pieChart.height = 200;
+
+}
+
+var myPieChart;
+
+function updateChart(name, data){
+    console.log(name, " ", data)
+    var chart = document.getElementById(name);
+    console.log(chart)
+    myPieChart.data.datasets[0].data = data;
+    myPieChart.update();
 }
 
 function cleanErrors(){
@@ -59,31 +94,8 @@ function cleanErrors(){
 }
 
 function search(email){
-    if (email == ""){
-        document.getElementById("searcherror").innerHTML = "Please enter a user email";
-        return;
-    }
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function(){
-        if(this.readyState == 4 && this.status == 200){
-            var returnData = JSON.parse(xhttp.responseText);
-            console.log(xhttp.responseText);
-            if (returnData.success) {
-                document.getElementById("searchmessagearea").style.visibility = "visible";
-                document.getElementById("searchinfo").style.visibility = "visible";
-                localStorage.setItem("searchemail",email);
-                showUserInfo(email, "searchinfo");
-                listAllMessages(true);
-            }
-            else {
-                document.getElementById("searcherror").innerHTML = returnData.message;
-                logOutIfNotLoggedIn(returnData.message);
-            }
-        }
-    }
-    var url = createGetURL("get_user_data_by_email", {'user_email': email, 'token': localStorage.getItem("token")});
-    xhttp.open("GET", url, true);
-    xhttp.send();
+    showUserInfo(email, "searchinfo");
+    listAllMessages(true);
 }
 
 function changePassword(formData){
@@ -151,11 +163,12 @@ var changeTab = function(tabName, email){
     document.getElementById(tabName).style.display = "block";
     cleanErrors();
 }
-
+print = console.log;
 function createSocket(token) {
     var newSocket = new WebSocket("ws://127.0.0.1:5000/websocket")
     newSocket.onopen = function () {
         newSocket.send(JSON.stringify({'messageType': 'token', 'token': token}))
+
     }
     newSocket.onmessage = function (event) {
         var returnData = JSON.parse(event.data)
@@ -163,6 +176,22 @@ function createSocket(token) {
             localStorage.removeItem("token");
             changeView("welcome");
             attachHandlersLogin();
+        }
+        else if(returnData.messageType == 'views'){
+            updateChart("piechart", returnData.message);
+        }
+        else if(returnData.messageType == 'login'){
+            changeView("profile");
+            attachHandlersHome();
+            changeTab("home");
+        }
+        else if(returnData.messageType == 'totalUsers'){
+            print("total users")
+            document.getElementById("totalusers").innerHTML = "Total users registered: "+ returnData.message;
+        }
+        else if(returnData.messageType == 'loggedInUsers'){
+            console.log("logged in users")
+            document.getElementById("loggedinusers").innerHTML = "Amount of users logged in: " + returnData.message;
         }
     }
 }
@@ -253,6 +282,11 @@ var showUserInfo = function(email, areaName){
                 "Email: " + returnData.data.email + "</br>" +
                 "City: " + returnData.data.city + "</br>" +
                 "Country: " + returnData.data.country;
+                if(areaName == "searchinfo"){
+                    document.getElementById("searchmessagearea").style.visibility = "visible";
+                    document.getElementById("searchinfo").style.visibility = "visible";
+                    localStorage.setItem("searchemail",email);
+                }
             }
             else{
                 document.getElementById("posterror").innerHTML = returnData.message;
@@ -354,9 +388,6 @@ var checkPassLength = function(password){
 window.onload = function(){
     if(localStorage.getItem("token") != null){
         createSocket(localStorage.getItem("token"));
-        changeView("profile");
-        attachHandlersHome();
-        changeTab("home");
     }
     else{
         changeView("welcome");
