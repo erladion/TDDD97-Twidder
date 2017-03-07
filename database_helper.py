@@ -83,3 +83,17 @@ def getAllUserCount():
     cur.execute("SELECT Count(*) FROM userInformation")
     data = cur.fetchone()
     return data
+
+def getUserMedia(email):
+    cur.execute("SELECT name, type FROM userMedia WHERE email=?", (email,))
+    data = cur.fetchall()
+    return data
+
+def getMedia(name, email):
+    cur.execute("SELECT filePath FROM userMedia WHERE name=? AND email=?", (name,email))
+    data = cur.fetchone()
+    return data
+
+def saveMedia(name, filePath, email, type):
+    cur.execute("INSERT INTO userMedia VALUES (?,?,?,?)", (name, filePath, email, type))
+    connection.commit()

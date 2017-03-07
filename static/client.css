@@ -93,8 +93,40 @@ ul.tab li a:focus, .active {background-color: #ccc;}
     margin-right: 0px;
 }
 
-.messagearea{
+#mediatext{
+    border: 1px solid black;
+}
+
+#mediaview{
+    float:right;
     width: 410px;
+    display: none;
+}
+
+#medialist{
+    height:100px;
+    overflow: auto;
+}
+
+#mediabutton{
+    float: left;
+    clear: left;
+}
+
+#video{
+    width:400px;
+    height:400px;
+    display: none;
+}
+
+#image{
+    width:400px;
+    height:400px;
+    overflow:auto;
+    display: none;
+}
+
+.messagearea{
     float: right;
     border: 1px solid;
     background-color: dodgerblue;
@@ -107,7 +139,6 @@ ul.tab li a:focus, .active {background-color: #ccc;}
 .postedmessage{
     width: 386px;
     background-color: white;
-    height: 50px;
     border: 1px solid black;
     margin-top: 5px;
 }

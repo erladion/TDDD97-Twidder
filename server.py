@@ -1,5 +1,7 @@
 # coding: utf8
 from flask import Flask
+from flask import send_from_directory
+from werkzeug.utils import secure_filename
 from flask_bcrypt import Bcrypt
 from flask import request
 from gevent.wsgi import WSGIServer
@@ -21,7 +23,6 @@ wslist = {}
 def handle_websocket():
     wsock = request.environ.get('wsgi.websocket')
     if not wsock:
-        print("fail")
         return
     while True:
         try:
@@ -31,6 +32,7 @@ def handle_websocket():
             obj = json.loads(message)
             if(obj['messageType'] == "token"):
                 wslist[obj['token']] = wsock
+                # Here we send the live stats to the user as soon as he logs in
                 wsock.send(json.dumps({"messageType": 'login'}))
                 wsock.send(json.dumps({'messageType': 'loggedInUsers', 'message': database_helper.getLoggedInUsersCount()}))
                 wsock.send(json.dumps({'messageType': 'totalUsers', 'message': database_helper.getAllUserCount()}))
@@ -53,7 +55,9 @@ def signup():
     country = request.form['country']
     city = request.form['city']
     password = request.form['password']
+    # We hash the password before we store it so that we don't store plain text
     hashed_password = bcrypt.generate_password_hash(password)
+    # We generate a private key for the user which is used when hashing
     private_key = os.urandom(32)
     private_key = base64.b64encode(private_key).decode('utf-8)')
 
@@ -86,7 +90,6 @@ def signin():
         return json.dumps({'success': False, 'message': 'The email or password is incorrect'})
 
     token = database_helper.get_token(email)
-    print(token)
     if token is not None:
         database_helper.remove_token(token)
         if(token in wslist):
@@ -99,6 +102,7 @@ def signin():
     token = base64.b64encode(token).decode('utf-8)')
     database_helper.insert_token(email, token)
     private_key = database_helper.get_private_key(email)
+    # When someone logs in, we send a message to all logged in users to update their 'logged in users' count
     for user in wslist:
         wslist[user].send(json.dumps({'messageType': 'loggedInUsers', 'message': database_helper.getLoggedInUsersCount()}))
     return json.dumps({'success': True, 'message': 'Successfully logged in', 'data': {'token': token, 'key': private_key}})
@@ -111,21 +115,21 @@ def signout():
         if token in wslist:
             wslist.pop(token)
 
+        # When someone logs out, we send a message to all logged in users to update their 'logged in users' count
         for user in wslist:
             wslist[user].send(json.dumps({'messageType': 'loggedInUsers', 'message': database_helper.getLoggedInUsersCount()}))
         return json.dumps({'success': True, 'message': 'The user was logged out'})
     else:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
 
+# This is run on every server call except login and signup
+# We create a hash using a 'blob' which is the text we have sent and compare it to the hash which was created
+# on the client in the exact same way. If they are different we return True which means this is not a correct server call
 def check_hash(blob,token,hash):
     key = database_helper.get_private_key(database_helper.get_email(token))
-    print(blob)
-    print(token)
-    print(key)
-    blob = blob + token + key
-    hashed = hashlib.sha512(blob).digest()
-    hashed = base64.b64encode(hashed)
-    return hashed == hash
+    blob = blob.replace('\r\n','') + token + key
+    hashed = hashlib.sha512(blob).hexdigest()
+    return hashed != hash
 
 @app.route("/change_password", methods=["post"])
 def change_password():
@@ -152,7 +156,6 @@ def change_password():
 @app.route("/get_user_data_by_token", methods=["GET"])
 def get_user_data_by_token():
     token = request.args.get("token")
-
     if check_hash("", token, request.args.get("hash")):
         return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
     email = database_helper.get_email(token)
@@ -160,7 +163,8 @@ def get_user_data_by_token():
         return json.dumps({'success': False, 'message': 'User is not logged in'})
     else:
         data = database_helper.get_user(email)
-        return json.dumps({'success': True, 'message': 'Data retrieval successful', "data": data})
+        retData = {'firstname': data[0], 'familyname': data[1], 'email': data[2], 'gender': data[3], 'city': data[4], 'country': data[5]}
+        return json.dumps({'success': True, 'message': 'Data retrieval successful', "data": retData})
 
 @app.route("/get_user_data_by_email", methods=["get"])
 def get_user_data_by_email():
@@ -178,12 +182,12 @@ def get_user_data_by_email():
 
         if data is not None:
             if user_email != email:
+                # If the user is not checking his own page, we update the looked-at-user's view count
                 da = database_helper.get_user(email)
                 database_helper.updateViews(user_email, da[3])
             if tok is not None and tok in wslist:
-                print("view updated")
+                # here we send the user's view count (which could be the sender himself if he just started his home page)
                 d = database_helper.getViews(user_email)
-                print("D:", d)
                 wslist[tok].send(json.dumps({'messageType': 'views', 'message': [d[0],d[1]]}))
             retData = {'firstname': data[0], 'familyname': data[1], 'email': data[2], 'gender': data[3], 'city': data[4], 'country': data[5]}
             return json.dumps({'success': True, 'message': 'Data retrieval successful', "data": retData})
@@ -224,7 +228,9 @@ def post_message():
     token = request.form["token"]
     message = request.form["message"]
     email = request.form["email"]
+    print(message)
     blob = message + email
+    print(blob)
     if check_hash(blob, token, request.form["hash"]):
         return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
     if database_helper.check_email(email) is False:
@@ -239,6 +245,72 @@ def post_message():
         else:
             database_helper.post_message(senderEmail, email, message)
             return json.dumps({'success': True, 'message': 'Message posted'})
+
+@app.route("/view_media", methods=["get"])
+def view_media():
+    token = request.args.get("token")
+    email = request.args.get("user_email")
+    name = request.args.get("name")
+    print(token)
+    print(email)
+    print(name)
+
+    useremail = database_helper.get_email(token)
+    if useremail is None:
+        return json.dumps({'success': False, 'message': 'User is not logged in'})
+    blob = email + name
+    print("hej")
+    if check_hash(blob, token, request.args.get("hash")):
+        return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
+
+    filePath = database_helper.getMedia(name, email)[0]
+    print(filePath)
+    return send_from_directory("media",filePath)
+
+@app.route("/show_media", methods=["get"])
+def show_media():
+    token = request.args.get("token")
+    user_email = request.args.get("user_email")
+    email = database_helper.get_email(token)
+    if email is None:
+        return json.dumps({'success': False, 'message': 'User is not logged in'})
+    blob = user_email
+
+    if check_hash(blob, token, request.args.get("hash")):
+        return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
+
+    data = database_helper.getUserMedia(user_email)
+    return json.dumps({'success': True, 'message':'Data retrieval successful', 'data': data})
+
+@app.route("/upload_media", methods=["post"])
+def upload_media():
+    print("start")
+    token = request.form["token"]
+    email = database_helper.get_email(token)
+    file = request.files["file"]
+    filetype = request.form["filetype"]
+    useremail = database_helper.get_email(token)
+    if useremail is None:
+        return json.dumps({'success': False, 'message': 'User is not logged in'})
+    blob = filetype
+
+    if check_hash(blob, token, request.form["hash"]):
+        return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
+
+    print("middle")
+    if email is None:
+        return json.dumps({'success': False, 'message': 'User is not logged in'})
+    if file.filename == '':
+        return json.dumps({'success': False, 'message': 'No file to be uploaded'})
+    if file:
+        filename = secure_filename(file.filename)
+        filePath = email + "/" + filename
+        if database_helper.getMedia(filename, email) is not None:
+            return json.dumps({'success': False, 'message': 'File already exists'})
+        file.save(os.path.join("media", filePath))
+        database_helper.saveMedia(filename, filePath, email, filetype)
+        print("end")
+        return json.dumps({'success': True, 'message': 'Upload successful'})
 
 if __name__ == '__main__':
 
