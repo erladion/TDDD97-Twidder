@@ -87,6 +87,14 @@ ul.tab li a:focus, .active {background-color: #ccc;}
     clear: left;
 }
 
+#uploadImgForm{
+    float:left;
+}
+
+#uploadVidForm{
+    float:right;
+}
+
 .postbutton{
     float: right;
     margin-top: 1px;
@@ -114,14 +122,14 @@ ul.tab li a:focus, .active {background-color: #ccc;}
 }
 
 #video{
-    width:400px;
-    height:400px;
+    width:340px;
+    height:340px;
     display: none;
 }
 
 #image{
-    width:400px;
-    height:400px;
+    width:340px;
+    height:340px;
     overflow:auto;
     display: none;
 }

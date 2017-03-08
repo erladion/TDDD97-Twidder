@@ -43,7 +43,11 @@ def handle_websocket():
 
 
 
+# Redirect all possible client-side urls to the client.html download
 @app.route("/", methods=['GET'])
+@app.route("/home", methods=['GET'])
+@app.route("/browse", methods=['GET'])
+@app.route("/account", methods=['GET'])
 def default():
     return app.send_static_file('client.html')
 @app.route("/signup", methods=['POST'])
@@ -246,27 +250,23 @@ def post_message():
             database_helper.post_message(senderEmail, email, message)
             return json.dumps({'success': True, 'message': 'Message posted'})
 
+# Returns the file the user has "clicked" on and shows it to the user
 @app.route("/view_media", methods=["get"])
 def view_media():
     token = request.args.get("token")
     email = request.args.get("user_email")
     name = request.args.get("name")
-    print(token)
-    print(email)
-    print(name)
 
     useremail = database_helper.get_email(token)
     if useremail is None:
-        return json.dumps({'success': False, 'message': 'User is not logged in'})
+        return
     blob = email + name
-    print("hej")
     if check_hash(blob, token, request.args.get("hash")):
-        return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
-
+        return
     filePath = database_helper.getMedia(name, email)[0]
-    print(filePath)
     return send_from_directory("media",filePath)
 
+# Returns all the media a given user has
 @app.route("/show_media", methods=["get"])
 def show_media():
     token = request.args.get("token")
@@ -282,34 +282,33 @@ def show_media():
     data = database_helper.getUserMedia(user_email)
     return json.dumps({'success': True, 'message':'Data retrieval successful', 'data': data})
 
+# Here we receive a file and store it in /media/username
 @app.route("/upload_media", methods=["post"])
 def upload_media():
-    print("start")
     token = request.form["token"]
     email = database_helper.get_email(token)
     file = request.files["file"]
     filetype = request.form["filetype"]
-    useremail = database_helper.get_email(token)
-    if useremail is None:
-        return json.dumps({'success': False, 'message': 'User is not logged in'})
     blob = filetype
 
     if check_hash(blob, token, request.form["hash"]):
         return json.dumps({'success': False, 'message': 'You are trying to hack a user. You should be ashamed of yourself!'})
-
-    print("middle")
     if email is None:
         return json.dumps({'success': False, 'message': 'User is not logged in'})
     if file.filename == '':
         return json.dumps({'success': False, 'message': 'No file to be uploaded'})
     if file:
+        # Check if the "user" has a folder, else we create one to store the files
+        if not os.path.isdir('./media/' + email):
+            os.makedirs('./media/'+email)
+        # Make sure the filename is not bad, example ../../.. etc, so we don't get users trying to hack the server
         filename = secure_filename(file.filename)
         filePath = email + "/" + filename
         if database_helper.getMedia(filename, email) is not None:
             return json.dumps({'success': False, 'message': 'File already exists'})
+        # We both save the file on disk as well as save the path in the database
         file.save(os.path.join("media", filePath))
         database_helper.saveMedia(filename, filePath, email, filetype)
-        print("end")
         return json.dumps({'success': True, 'message': 'Upload successful'})
 
 if __name__ == '__main__':

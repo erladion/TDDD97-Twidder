@@ -2,10 +2,7 @@
  * Created by johja118 on 2017-01-24.
  */
 
-displayView = function(){
- // the code required to display a view
-    // do some fancy stuff here
-};
+print = console.log;
 
 var attachHandlersLogin = function(){
     var loginForm = document.getElementById("loginForm");
@@ -34,9 +31,9 @@ var attachHandlersHome = function(){
     uploadImgButton.addEventListener("click", function() {uploadMedia(uploadImgForm, "image");});
     uploadVidButton.addEventListener("click", function() {uploadMedia(uploadVidForm, "video");});
 
-    homeTab.addEventListener("click", function() {changeTab("home");});
-    browseTab.addEventListener("click", function() {changeTab("browse");});
-    accountTab.addEventListener("click", function() {changeTab("account");});
+    homeTab.addEventListener("click", function() {page("/home");});
+    browseTab.addEventListener("click", function() {page("/browse");});
+    accountTab.addEventListener("click", function() {page("/account");});
 
     changePassForm.setAttribute("onsubmit", "changePassword(this); return false;");
     logoutButton.addEventListener("click", function() {logout();});
@@ -144,7 +141,7 @@ function changeView(view, email){
     if(view == "profile") {
         showUserInfo(email, "personalinfo");
         listAllMessages(email);
-        getMediaList(email, "medialist");
+        getMediaList();
     }
 }
 
@@ -153,8 +150,7 @@ function logout(){
     xhttp.onreadystatechange = function(){
         if(this.readyState == 4 && this.status == 200){
             localStorage.removeItem("token");
-            changeView("welcome");
-            attachHandlersLogin();
+            page('/');
         }
     }
     xhttp.open("POST", "signout", true);
@@ -163,8 +159,7 @@ function logout(){
     xhttp.send(data);
 }
 
-var changeTab = function(tabName, email){
-    email = email || localStorage.getItem("email");
+var changeTab = function(tabName){
     var tabContent = document.getElementsByClassName("tabcontent");
     for (var i = 0; i < tabContent.length; i++){
         tabContent[i].style.display = "none";
@@ -172,8 +167,11 @@ var changeTab = function(tabName, email){
     document.getElementById(tabName).style.display = "block";
     cleanErrors();
 }
-print = console.log;
-function createSocket(token, key) {
+
+var socketCreated = false;
+function createSocket(token, key, login) {
+    if (socketCreated) return;
+    socketCreated = true;
     var newSocket = new WebSocket("ws://127.0.0.1:5000/websocket")
     newSocket.onopen = function () {
         newSocket.send(JSON.stringify({'messageType': 'token', 'token': token, 'key': key}));
@@ -189,7 +187,14 @@ function createSocket(token, key) {
         else if(returnData.messageType == 'login'){
             changeView("profile");
             attachHandlersHome();
-            changeTab("home");
+            // If we just logged in we redirect to the /home, otherwise we go to the given url
+            if(login){
+                page("/home");
+            }else{
+                var url = window.location.pathname.split('/');
+                url = '/'+ url[1];
+                page(url);
+            }
         }
         // Here are the three possible updates of our live presentation
         // We have one messagetype for each type of data to update
@@ -220,7 +225,7 @@ function login(email, password){
                 changeView("profile");
                 changeTab("home");
                 attachHandlersHome();
-                createSocket(returnData.data.token, returnData.data.key);
+                createSocket(returnData.data.token, returnData.data.key, true);
             }
         }
     }
@@ -231,15 +236,16 @@ function login(email, password){
     xhttp.send(data);
 }
 
-function getMediaList(email, areaName){
-    email = email || localStorage.getItem("email");
+// Gets the files available to the user from the server and display them in a list
+function getMediaList(){
+    email = localStorage.getItem("email");
     print(email);
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function(){
         if(this.readyState == 4 && this.status == 200){
             var returnData = JSON.parse(xhttp.responseText);
             if (returnData.success) {
-                var infoArea = document.getElementById(areaName);
+                var infoArea = document.getElementById("medialist");
                 infoArea.innerHTML = "";
                 print(returnData.data);
                 // We go through the list of names we get and create buttons/links to each one
@@ -262,6 +268,7 @@ function getMediaList(email, areaName){
     xhttp.send();
 }
 
+// Here we show the chosen file to the user, and hide the other "media type"
 function loadMedia(filename, email, filetype){
     print(filename);
     var vid = document.getElementById("video");
@@ -278,20 +285,17 @@ function loadMedia(filename, email, filetype){
         vid.load();
         vid.style.display = "block";
         img.style.display = "none";
-
     }
 }
 
+// Upload the chosen file to the server and update the medialist
 function uploadMedia(formData, type){
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function(){
         if(this.readyState == 4 && this.status == 200){
             var returnData = JSON.parse(xhttp.responseText);
             if (returnData.success){
-                getMediaList(localStorage.getItem("email"), "medialist");
-            }
-            else{
-
+                getMediaList();
             }
         }
     }
@@ -305,8 +309,8 @@ function uploadMedia(formData, type){
     xhttp.send(data);
 }
 
+// Toggle between the message and media view
 var mediaOn = false;
-
 function toggleMedia(){
     mediaOn = !mediaOn;
 
@@ -412,8 +416,7 @@ var showUserInfo = function(email, areaName){
 function logOutIfNotLoggedIn(message){
     if(message == "User is not logged in"){
         localStorage.removeItem("token");
-        changeView("welcome");
-        attachHandlersLogin();
+        page('/');
     }
 }
 
@@ -513,12 +516,33 @@ var checkPassLength = function(password){
     return (password.length > 7);
 }
 
-window.onload = function(){
+// Functions for url redirection
+page('/', function(){
+    changeView("welcome");
+    attachHandlersLogin();
+});
+
+page('/home', function(){
+    changeTab("home")
+});
+
+page('/account', function(){
+    changeTab("account")
+});
+
+page('/browse', function(){
+    changeTab("browse");
+});
+
+var startUp = function(){
     if(localStorage.getItem("token") != null){
-        createSocket(localStorage.getItem("token"));
+        createSocket(localStorage.getItem("token"), null, true);
     }
     else{
-        changeView("welcome");
-        attachHandlersLogin();
+        page('/');
     }
 };
+startUp();
+page.start();
+
+window.onload = startUp;
