@@ -1,4 +1,4 @@
-create table userInformation(firstName, familyName, email PRIMARY KEY, gender, city, country, password, maleViews, femaleViews, privateKey);/*, passwordSalt UNIQUE);*/
+create table userInformation(firstName, familyName, email PRIMARY KEY, gender, city, country, password, maleViews, femaleViews);
 create table messages(message, senderEmail, recieverEmail);
 create table loggedInUsers(token PRIMARY KEY, email UNIQUE);
 create table userMedia(name, filePath, email, type);
