@@ -55,6 +55,8 @@ var attachHandlersHome = function(){
 
     // We create a pie chart to show views on the user's profile page
     var pieChart = document.getElementById("piechart");
+    pieChart.width = 150;
+    pieChart.height = 150;
     var data = {
         labels: [
             "Male",
@@ -77,17 +79,55 @@ var attachHandlersHome = function(){
             responsive: false
         }
     });
-    pieChart.width = 200;
-    pieChart.height = 200;
+
+    // Chart for showing the amount of users currently logged in
+    var loggedInChart = document.getElementById("loggedinchart");
+    loggedInChart.width = 150;
+    loggedInChart.height = 150;
+    var data2 = {
+        labels: [
+            "Logged In",
+            "Logged Out"
+        ],
+        datasets: [
+            {
+                data: [0, 0],
+                backgroundColor: [
+                    "#5cf442",
+                    "#ff0000"
+                ]
+            }]
+    }
+    myLoggedInChart = new Chart(loggedInChart,{
+        type: 'pie',
+        data: data2,
+        options: {
+            responsive: false
+        }
+    });
+
+
 
 }
 
 var myPieChart;
+var myLoggedInChart;
 
+/**
+ * Updates the view chart with given data
+ */
 function updateChart(data){
     // We update the pie chart with the data received from the server
     myPieChart.data.datasets[0].data = data;
     myPieChart.update();
+}
+
+/**
+ * Updates the chart showing how many users are currently logged in
+ */
+function updateLoggedInChart(data){
+    myLoggedInChart.data.datasets[0].data = [data[0], data[1]-data[0]];
+    myLoggedInChart.update();
 }
 
 function cleanErrors(){
@@ -98,6 +138,7 @@ function cleanErrors(){
 }
 
 function search(email){
+    localStorage.setItem("searchemail",email);
     showUserInfo(email, "searchinfo");
     listAllMessages(true);
 }
@@ -129,10 +170,12 @@ function changePassword(formData){
     }
     xhttp.open("POST", "change_password", true);
     var data = new FormData();
-    data.append('token', localStorage.getItem("token"));
+    data.append('email', localStorage.getItem("email"));
     data.append('newpass', formData.newpass.value);
     data.append('oldpass', formData.oldpass.value);
-    data.append('hash', hashBlob(formData.oldpass.value + formData.newpass.value));
+    var t = Date.now();
+    data.append('time', t);
+    data.append('hash', hashBlob(formData.oldpass.value + formData.newpass.value + localStorage.getItem("email") + t));
     xhttp.send(data);
 }
 
@@ -140,7 +183,7 @@ function changeView(view, email){
     document.getElementById("content").innerHTML = document.getElementById(view + "view").innerHTML;
     if(view == "profile") {
         showUserInfo(email, "personalinfo");
-        listAllMessages(email);
+        listAllMessages(false);
         getMediaList();
     }
 }
@@ -155,7 +198,10 @@ function logout(){
     }
     xhttp.open("POST", "signout", true);
     var data = new FormData();
-    data.append('token', localStorage.getItem("token"));
+    data.append('email', localStorage.getItem("email"));
+    var t = Date.now();
+    data.append('time', t);
+    data.append('hash', hashBlob(localStorage.getItem("email") + t));
     xhttp.send(data);
 }
 
@@ -164,17 +210,18 @@ var changeTab = function(tabName){
     for (var i = 0; i < tabContent.length; i++){
         tabContent[i].style.display = "none";
     }
-    document.getElementById(tabName).style.display = "block";
+    var tab = document.getElementById(tabName)
+    if (tab != null) tab.style.display = "block";
     cleanErrors();
 }
 
 var socketCreated = false;
-function createSocket(token, key, login) {
+function createSocket(token, login) {
     if (socketCreated) return;
     socketCreated = true;
     var newSocket = new WebSocket("ws://127.0.0.1:5000/websocket")
     newSocket.onopen = function () {
-        newSocket.send(JSON.stringify({'messageType': 'token', 'token': token, 'key': key}));
+        newSocket.send(JSON.stringify({'messageType': 'token', 'token': token}));
 
     }
     newSocket.onmessage = function (event) {
@@ -202,11 +249,8 @@ function createSocket(token, key, login) {
         else if(returnData.messageType == 'views'){
             updateChart(returnData.message);
         }
-        else if(returnData.messageType == 'totalUsers'){
-            document.getElementById("totalusers").innerHTML = "Total users registered: "+ returnData.message;
-        }
-        else if(returnData.messageType == 'loggedInUsers'){
-            document.getElementById("loggedinusers").innerHTML = "Amount of users logged in: " + returnData.message;
+        else if(returnData.messageType == 'loggedInStats'){
+            updateLoggedInChart(returnData.message);
         }
     }
 }
@@ -219,13 +263,12 @@ function login(email, password){
                 document.getElementById("loginerror").innerHTML = returnData.message;
             }
             else{
-                localStorage.setItem("token", returnData.data.token);
-                localStorage.setItem("private_key", returnData.data.key);
+                localStorage.setItem("token", returnData.data);
                 localStorage.setItem("email", email);
                 changeView("profile");
                 changeTab("home");
                 attachHandlersHome();
-                createSocket(returnData.data.token, returnData.data.key, true);
+                createSocket(returnData.data, true);
             }
         }
     }
@@ -236,10 +279,11 @@ function login(email, password){
     xhttp.send(data);
 }
 
-// Gets the files available to the user from the server and display them in a list
+/**
+ * Gets the files available to the user from the server and display them in a list
+ */
 function getMediaList(){
     email = localStorage.getItem("email");
-    print(email);
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function(){
         if(this.readyState == 4 && this.status == 200){
@@ -247,11 +291,9 @@ function getMediaList(){
             if (returnData.success) {
                 var infoArea = document.getElementById("medialist");
                 infoArea.innerHTML = "";
-                print(returnData.data);
                 // We go through the list of names we get and create buttons/links to each one
                 for (filename in returnData.data) {
                     filename  = returnData.data[filename];
-                    print(filename);
                     infoArea.innerHTML += "<button onclick='loadMedia(\"" + filename[0] + "\", " +
                     "\"" + email + "\", \"" + filename[1] + "\");'>" + filename[0] + "</button></br>";
                 }
@@ -262,19 +304,22 @@ function getMediaList(){
             }
         }
     }
+    var t = Date.now();
     var url = createGetURL("show_media", {
-        'user_email': email, 'token': localStorage.getItem("token"), 'hash': hashBlob(email)});
+        'email': email, 'time': t,  'hash': hashBlob(email + t)});
     xhttp.open("GET", url, true);
     xhttp.send();
 }
 
-// Here we show the chosen file to the user, and hide the other "media type"
+/**
+ * Here we show the chosen file to the user, and hide the other "media type"
+ */
 function loadMedia(filename, email, filetype){
-    print(filename);
     var vid = document.getElementById("video");
     var img = document.getElementById("image");
+    var t = Date.now();
     var url = createGetURL("view_media", {
-        'user_email': email, 'token': localStorage.getItem("token"), 'name': filename, 'hash': hashBlob(email+filename)});
+        'email': localStorage.getItem("email"), 'name': filename, 'time': t, 'hash': hashBlob(filename + localStorage.getItem("email")+ t)});
     if (filetype == "image") {
         img.src = url;
         img.style.display = "block";
@@ -288,7 +333,9 @@ function loadMedia(filename, email, filetype){
     }
 }
 
-// Upload the chosen file to the server and update the medialist
+/**
+ * Upload the chosen file to the server and update the medialist
+ */
 function uploadMedia(formData, type){
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function(){
@@ -299,17 +346,24 @@ function uploadMedia(formData, type){
             }
         }
     }
-
+    if (formData["upload_" + type].files[0] == null)
+        return;
     xhttp.open("POST", "upload_media", true);
     var data = new FormData();
-    data.append('token',localStorage.getItem("token"));
+    data.append('email',localStorage.getItem("email"));
     data.append('file', formData["upload_" + type].files[0]);
     data.append('filetype', type);
-    data.append('hash', hashBlob(type))
+    var t = Date.now();
+    data.append('time', t);
+    data.append('hash', hashBlob(type + localStorage.getItem("email")+t))
     xhttp.send(data);
+    // Magic to reset chosen file
+    document.getElementById("upload_" + type).parentNode.innerHTML = document.getElementById("upload_" + type).parentNode.innerHTML;
 }
 
-// Toggle between the message and media view
+/**
+ * Toggle between the message and media view
+ */
 var mediaOn = false;
 function toggleMedia(){
     mediaOn = !mediaOn;
@@ -317,10 +371,12 @@ function toggleMedia(){
     if (mediaOn){
         document.getElementById("mediaview").style.display = "block";
         document.getElementById("messagearea").style.display = "none";
+        document.getElementById("mediabutton").innerHTML = "Messages";
     }
     else{
         document.getElementById("mediaview").style.display = "none";
         document.getElementById("messagearea").style.display = "block";
+        document.getElementById("mediabutton").innerHTML = "Media";
     }
 }
 
@@ -368,10 +424,13 @@ var checkSignupForm = function(formData){
     xhttp.send(data);
 }
 
-// This function creates a hash based on the text in the 'blob' we send in as well as the token and the user's private key
-// This hash is checked on the server to make sure we are the correct user
+
+/**
+ * This function creates a hash based on the text in the 'blob' we send in as well as the token and the user's private key
+ * This hash is checked on the server to make sure we are the correct user
+ */
 function hashBlob(blob){
-    blob = blob + localStorage.getItem("token") + localStorage.getItem('private_key');
+    blob = blob + localStorage.getItem("token");
     blob = blob.replace(/\n/g,"");
     var hashed = CryptoJS.SHA512(blob);
     return hashed;
@@ -396,7 +455,6 @@ var showUserInfo = function(email, areaName){
                 if(areaName == "searchinfo"){
                     document.getElementById("searchmessagearea").style.visibility = "visible";
                     document.getElementById("searchinfo").style.visibility = "visible";
-                    localStorage.setItem("searchemail",email);
                 }
             }
             else{
@@ -405,8 +463,9 @@ var showUserInfo = function(email, areaName){
             }
         }
     }
+    var t = Date.now();
     var url = createGetURL("get_user_data_by_email", {
-        'user_email': email, 'token': localStorage.getItem("token"), 'hash': hashBlob(email)});
+        'user_email': email, 'email': localStorage.getItem("email"),'time': t, 'hash': hashBlob(email + localStorage.getItem("email")+t)});
     xhttp.open("GET", url, true);
     xhttp.send();
 
@@ -458,29 +517,37 @@ var postMessage = function(searcharea){
     messageToPost = messageToPost.replace(/\s+$/g,"")
     xhttp.open("POST", "post_message", true);
     var data = new FormData();
-    data.append('token',localStorage.getItem("token"));
+    data.append('email',localStorage.getItem("email"));
     data.append('message',messageToPost);
-    data.append('email', email);
-    data.append('hash', hashBlob(messageToPost + email));
+    data.append('user_email', email);
+    var t = Date.now();
+    data.append('time', t);
+    data.append('hash', hashBlob(messageToPost + email + localStorage.getItem("email")+ t));
     xhttp.send(data);
 }
-
-// This function is run on the message area to allow the mouse to drop items into it
+/**
+ * This function is run on the message area to allow the mouse to drop items into it
+ */
 function allowDrop(event){
     event.preventDefault();
     event.stopPropagation();
 }
 
-// This saves the message's text so we can drop it into the message area
+/**
+ * This saves the message's text so we can drop it into the message area
+ */
 function drag(event){
-    event.dataTransfer.setData("text", event.target.innerHTML.replace(/<br>/g, ""));
+    event.dataTransfer.setData("message", event.target.childNodes[1].innerHTML.replace(/<br>/g, ""));
+    event.dataTransfer.setData("writer", event.target.childNodes[0].innerHTML.replace(/<br>/g, ""));
 }
 
-// Here we add the saved message text to the message area
+/**
+ * Here we add the saved message text to the message area
+ */
 function drop(event){
     event.preventDefault();
     event.stopPropagation();
-    event.target.value += event.dataTransfer.getData("text") + "\n";
+    event.target.value += "\"" + event.dataTransfer.getData("message") + "\"\n - " + event.dataTransfer.getData("writer") + "\n";
 }
 
 var listAllMessages = function(searcharea){
@@ -496,7 +563,7 @@ var listAllMessages = function(searcharea){
             if (returnData.success) {
                 for(var i = returnData.data.length - 1; i >= 0; i--){
                     // We set the messages to draggable to allow them to be dragged (and copied) into the message area
-                    messageArea.innerHTML += returnData.data[i].writer + "</br>" + "<div class=\"postedmessage\" draggable=\"true\" ondragstart=\"drag(event)\">" + returnData.data[i].content.replace(/</g,"&lt").replace(/\n/g,"<br>") + "</div></br>";
+                    messageArea.innerHTML += "<div draggable=\"true\" ondragstart=\"drag(event)\"><div>" + returnData.data[i].writer + "</div><div class=\"postedmessage\">" + returnData.data[i].content.replace(/</g,"&lt").replace(/\n/g,"<br>") + "</div></div></br>";
                 }
                 cleanErrors();
             }
@@ -505,8 +572,9 @@ var listAllMessages = function(searcharea){
             }
         }
     }
+    var t = Date.now();
     var url = createGetURL("get_user_messages_by_email", {
-        'user_email': email, 'token': localStorage.getItem("token"), 'hash': hashBlob(email)});
+        'user_email': email, 'email': localStorage.getItem("email"), 'time': t, 'hash': hashBlob(email + localStorage.getItem("email")+t)});
     xhttp.open("GET", url, true);
     xhttp.send();
 
@@ -518,16 +586,21 @@ var checkPassLength = function(password){
 
 // Functions for url redirection
 page('/', function(){
-    changeView("welcome");
-    attachHandlersLogin();
+    if (localStorage.getItem("token") != null)
+        page('/home');
+    else {
+        socketCreated = false;
+        changeView("welcome");
+        attachHandlersLogin();
+    }
 });
 
 page('/home', function(){
-    changeTab("home")
+    changeTab("home");
 });
 
 page('/account', function(){
-    changeTab("account")
+    changeTab("account");
 });
 
 page('/browse', function(){
@@ -536,7 +609,7 @@ page('/browse', function(){
 
 var startUp = function(){
     if(localStorage.getItem("token") != null){
-        createSocket(localStorage.getItem("token"), null, true);
+        createSocket(localStorage.getItem("token"));
     }
     else{
         page('/');
